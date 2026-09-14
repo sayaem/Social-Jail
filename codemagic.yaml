@@ -1,0 +1,46 @@
+# Codemagic CI/CD configuration for Z Android App
+# For detailed configuration options, see: https://docs.codemagic.io/yaml-basic/yamls/
+
+workflows:
+  android-debug:
+    name: Z Android Debug Build
+    max_build_duration: 60
+    
+    # Use mac_mini_m2.
+    # Supported alternatives include: linux, linux_x2, linux_x4, mac_mini_m1, mac_mini_m2
+    instance_type: mac_mini_m2
+    
+    environment:
+      vars:
+        # General non-sensitive variables
+        APP_NAME: "Z"
+      java: 17
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: '*'
+          include: true
+          source: true
+
+    scripts:
+      - name: Generate gradle wrapper
+        script: |
+          gradle wrapper --gradle-version 9.3.1
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      
+      - name: Build Android Debug APK
+        script: |
+          ./gradlew assembleDebug
+
+    artifacts:
+      # Pattern matching to locate the generated debug APKs and zip them for download/export
+      - app/build/outputs/apk/debug/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - hello.sayaem@gmail.com

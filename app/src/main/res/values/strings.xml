@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Social Jail</string>
+    <string name="accessibility_service_description">Used solely to detect when a user-blocked application is opened and display the Social Jail lock screen to enforce digital discipline. Does not read keystrokes, personal messages, or sensitive screen content.</string>
+    <string name="notification_channel_name">Lock Enforcement</string>
+    <string name="notification_channel_desc">Shows active lock status, countdown, and completion alerts.</string>
+    <string name="notification_active_title">🔒 Social Jail Active</string>
+    <string name="notification_complete_title">🔓 Session Complete</string>
+    <string name="notification_complete_desc">Your selected apps are available again.</string>
+</resources>
