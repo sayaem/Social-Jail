@@ -140,6 +140,8 @@ fun SocialJailApp(
     val isGoalPromptEnabled by viewModel.isGoalPromptEnabled.collectAsState()
     val completionSession by viewModel.completionSession.collectAsState()
     val completionAttempts by viewModel.completionAttempts.collectAsState()
+    val examPlans by viewModel.examPlans.collectAsState()
+    val smartPresets by viewModel.smartPresets.collectAsState()
 
     // Lock Flow State
     var showLockConfirmationDialog by remember { mutableStateOf(false) }
@@ -147,6 +149,8 @@ fun SocialJailApp(
     var showLockingOverlay by remember { mutableStateOf(false) }
     var pendingDurationMinutes by remember { mutableIntStateOf(120) }
     var pendingGoalText by remember { mutableStateOf<String?>(null) }
+    var pendingEscalationEnabled by remember { mutableStateOf(false) }
+    var pendingEscalationAttempts by remember { mutableIntStateOf(3) }
 
     BackHandler(enabled = screenStack.size > 1) {
         screenStack.removeAt(screenStack.size - 1)
@@ -247,6 +251,7 @@ fun SocialJailApp(
                         defaultDurationMinutes = defaultDurationMinutes,
                         permissionStatus = permissionStatus,
                         diagnosticReport = diagnosticReport,
+                        smartPresets = smartPresets,
                         onStartSessionClick = {
                             if (selectedPackages.isEmpty()) {
                                 screenStack.add(Screen.AppSelection)
@@ -260,6 +265,14 @@ fun SocialJailApp(
                                 screenStack.add(Screen.AppSelection)
                             } else {
                                 confirmationInitialDuration = minutes
+                                showLockConfirmationDialog = true
+                            }
+                        },
+                        onApplySmartPreset = { preset ->
+                            if (selectedPackages.isEmpty()) {
+                                screenStack.add(Screen.AppSelection)
+                            } else {
+                                confirmationInitialDuration = preset.durationMinutes
                                 showLockConfirmationDialog = true
                             }
                         },
@@ -277,6 +290,9 @@ fun SocialJailApp(
                         onScheduleClick = {
                             screenStack.add(Screen.Schedule)
                         },
+                        onExamModeClick = {
+                            screenStack.add(Screen.ExamMode)
+                        },
                         onStatisticsClick = {
                             screenStack.add(Screen.Statistics)
                         },
@@ -285,6 +301,25 @@ fun SocialJailApp(
                         },
                         onPermissionsClick = {
                             screenStack.add(Screen.Permissions)
+                        }
+                    )
+                }
+
+                Screen.ExamMode -> {
+                    com.example.ui.exam.ExamModeScreen(
+                        examPlans = examPlans,
+                        profiles = profiles,
+                        onSaveExamPlan = { plan -> viewModel.saveExamPlan(plan) },
+                        onDeleteExamPlan = { id -> viewModel.deleteExamPlan(id) },
+                        onStartExamBlock = { plan ->
+                            coroutineScope.launch {
+                                viewModel.startExamBlock(plan)
+                                screenStack.clear()
+                                screenStack.add(Screen.Home)
+                            }
+                        },
+                        onBack = {
+                            if (screenStack.size > 1) screenStack.removeAt(screenStack.size - 1)
                         }
                     )
                 }
@@ -441,10 +476,12 @@ fun SocialJailApp(
                     activeProfile = selectedProfile,
                     isGoalPromptEnabled = isGoalPromptEnabled,
                     onDismiss = { showLockConfirmationDialog = false },
-                    onConfirmLock = { duration, goal ->
+                    onConfirmLock = { duration, goal, escalationEnabled, escalationAttempts ->
                         showLockConfirmationDialog = false
                         pendingDurationMinutes = duration
                         pendingGoalText = goal
+                        pendingEscalationEnabled = escalationEnabled
+                        pendingEscalationAttempts = escalationAttempts
                         showLockingOverlay = true
                     }
                 )
@@ -460,7 +497,9 @@ fun SocialJailApp(
                                 packages = selectedPackages.toList(),
                                 durationMinutes = pendingDurationMinutes,
                                 goalText = pendingGoalText,
-                                profileName = selectedProfile?.name
+                                profileName = selectedProfile?.name,
+                                escalationEnabled = pendingEscalationEnabled,
+                                escalationAttemptTrigger = pendingEscalationAttempts
                             )
                             screenStack.clear()
                             screenStack.add(Screen.Home)
@@ -474,6 +513,9 @@ fun SocialJailApp(
                 SessionCompleteDialog(
                     session = session,
                     blockedAttemptsCount = completionAttempts,
+                    onSubmitReview = { status, note ->
+                        viewModel.submitPostSessionReview(status, note)
+                    },
                     onDismiss = { viewModel.dismissCompletionDialog() }
                 )
             }

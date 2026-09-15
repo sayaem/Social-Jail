@@ -14,7 +14,9 @@ data class DeviceLockSession(
     val isDeviceOwnerMode: Boolean = false,
     val startElapsedRealtime: Long = 0L,
     val expectedDurationMillis: Long = 0L,
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    val goalStatus: GoalStatus? = null,
+    val reviewNote: String? = null
 ) {
     fun remainingMillis(currentTimeMillis: Long = System.currentTimeMillis()): Long {
         if (status == DeviceLockStatus.COMPLETED) return 0L
@@ -49,7 +51,9 @@ data class DeviceLockSession(
             isDeviceOwnerMode = isDeviceOwnerMode,
             startElapsedRealtime = startElapsedRealtime,
             expectedDurationMillis = expectedDurationMillis,
-            completedAt = completedAt
+            completedAt = completedAt,
+            goalStatus = goalStatus?.name,
+            reviewNote = reviewNote
         )
     }
 
@@ -59,6 +63,9 @@ data class DeviceLockSession(
                 DeviceLockStatus.valueOf(entity.status)
             } catch (e: Exception) {
                 DeviceLockStatus.COMPLETED
+            }
+            val parsedGoalStatus = entity.goalStatus?.let {
+                try { GoalStatus.valueOf(it) } catch (e: Exception) { null }
             }
             return DeviceLockSession(
                 id = entity.id,
@@ -71,7 +78,9 @@ data class DeviceLockSession(
                 isDeviceOwnerMode = entity.isDeviceOwnerMode,
                 startElapsedRealtime = entity.startElapsedRealtime,
                 expectedDurationMillis = entity.expectedDurationMillis,
-                completedAt = entity.completedAt
+                completedAt = entity.completedAt,
+                goalStatus = parsedGoalStatus,
+                reviewNote = entity.reviewNote
             )
         }
     }

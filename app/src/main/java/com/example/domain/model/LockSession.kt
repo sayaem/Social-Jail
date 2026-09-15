@@ -16,8 +16,17 @@ data class LockSession(
     val expectedDurationMillis: Long = 0L,
     val completedAt: Long? = null,
     val goalText: String? = null,
-    val profileName: String? = null
+    val profileName: String? = null,
+    val escalationEnabled: Boolean = false,
+    val escalationAttemptTrigger: Int = 3,
+    val escalationAction: String = "DEVICE_LOCK",
+    val escalationTriggered: Boolean = false,
+    val goalStatus: GoalStatus? = null,
+    val reviewNote: String? = null
 ) {
+    val isDeviceLock: Boolean
+        get() = profileName == "DEVICE_LOCK" || (blockedPackageNames.isEmpty() && blockedAppNames.isEmpty())
+
     fun remainingMillis(currentTimeMillis: Long = System.currentTimeMillis()): Long {
         if (status == SessionStatus.COMPLETED) return 0L
 
@@ -53,7 +62,13 @@ data class LockSession(
             expectedDurationMillis = expectedDurationMillis,
             completedAt = completedAt,
             goalText = goalText,
-            profileName = profileName
+            profileName = profileName,
+            escalationEnabled = escalationEnabled,
+            escalationAttemptTrigger = escalationAttemptTrigger,
+            escalationAction = escalationAction,
+            escalationTriggered = escalationTriggered,
+            goalStatus = goalStatus?.name,
+            reviewNote = reviewNote
         )
     }
 
@@ -71,6 +86,9 @@ data class LockSession(
             } catch (e: Exception) {
                 LockMode.HARDCORE
             }
+            val parsedGoalStatus = entity.goalStatus?.let {
+                try { GoalStatus.valueOf(it) } catch (e: Exception) { null }
+            }
             return LockSession(
                 id = entity.id,
                 createdAt = entity.createdAt,
@@ -84,7 +102,13 @@ data class LockSession(
                 expectedDurationMillis = entity.expectedDurationMillis,
                 completedAt = entity.completedAt,
                 goalText = entity.goalText,
-                profileName = entity.profileName
+                profileName = entity.profileName,
+                escalationEnabled = entity.escalationEnabled,
+                escalationAttemptTrigger = entity.escalationAttemptTrigger,
+                escalationAction = entity.escalationAction,
+                escalationTriggered = entity.escalationTriggered,
+                goalStatus = parsedGoalStatus,
+                reviewNote = entity.reviewNote
             )
         }
 
@@ -126,4 +150,16 @@ enum class SessionStatus {
 enum class LockMode {
     HARDCORE,
     NORMAL
+}
+
+enum class GoalStatus {
+    COMPLETED,
+    PARTIAL,
+    NOT_COMPLETED
+}
+
+enum class CommitmentLevel {
+    STANDARD,
+    HARDCORE,
+    DEVICE_LOCK
 }

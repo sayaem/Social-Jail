@@ -16,5 +16,7 @@ data class DeviceLockSessionEntity(
     val isDeviceOwnerMode: Boolean = false,
     val startElapsedRealtime: Long = 0L,
     val expectedDurationMillis: Long = 0L,
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    val goalStatus: String? = null,
+    val reviewNote: String? = null
 )

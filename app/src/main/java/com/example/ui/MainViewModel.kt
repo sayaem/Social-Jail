@@ -7,12 +7,16 @@ import com.example.data.local.AppPreferences
 import com.example.data.repository.LockRepository
 import com.example.domain.model.DeviceLockSession
 import com.example.domain.model.DeviceLockStats
+import com.example.domain.model.ExamPlan
+import com.example.domain.model.GoalStatus
 import com.example.domain.model.InstalledAppInfo
 import com.example.domain.model.LockMode
 import com.example.domain.model.LockSession
 import com.example.domain.model.Profile
 import com.example.domain.model.Schedule
+import com.example.domain.model.SmartPreset
 import com.example.domain.model.StatisticsData
+import com.example.domain.model.TemptationAnalytics
 import com.example.util.PackageUtils
 import com.example.util.PermissionStatus
 import com.example.util.PermissionUtils
@@ -81,6 +85,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = emptyList()
         )
 
+    val smartPresets: StateFlow<List<SmartPreset>> = repository.smartPresetsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = SmartPreset.getDefaultPresets()
+        )
+
+    val examPlans: StateFlow<List<ExamPlan>> = repository.examPlansFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val activeExamPlan: StateFlow<ExamPlan?> = repository.activeExamPlanFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
     val schedules: StateFlow<List<Schedule>> = repository.schedulesFlow
         .stateIn(
             scope = viewModelScope,
@@ -93,6 +118,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = StatisticsData()
+        )
+
+    val temptationAnalytics: StateFlow<TemptationAnalytics> = repository.temptationAnalyticsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = TemptationAnalytics()
         )
 
     private val _permissionStatus = MutableStateFlow(PermissionUtils.getPermissionStatus(application))
@@ -278,12 +310,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _defaultDurationMinutes.value = profile.defaultDurationMinutes
     }
 
+    fun applySmartPreset(preset: SmartPreset) {
+        _defaultDurationMinutes.value = preset.durationMinutes
+        if (preset.blockedPackageNames.isNotEmpty()) {
+            _selectedPackages.value = preset.blockedPackageNames.toSet()
+        }
+        val matchingProfile = profiles.value.firstOrNull { it.name == preset.profileName }
+        if (matchingProfile != null) {
+            _selectedProfile.value = matchingProfile
+            _selectedPackages.value = matchingProfile.packageNames.toSet()
+        }
+    }
+
     // Start Session
     suspend fun startSession(
         packages: List<String>,
         durationMinutes: Int,
         goalText: String?,
-        profileName: String?
+        profileName: String?,
+        escalationEnabled: Boolean = false,
+        escalationAttemptTrigger: Int = 3,
+        escalationAction: String = "DEVICE_LOCK"
     ): Result<Long> {
         val pm = getApplication<Application>().packageManager
         val appNames = packages.map { pkg ->
@@ -301,7 +348,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             durationMillis = durationMillis,
             mode = LockMode.HARDCORE,
             goalText = goalText,
-            profileName = profileName
+            profileName = profileName,
+            escalationEnabled = escalationEnabled,
+            escalationAttemptTrigger = escalationAttemptTrigger,
+            escalationAction = escalationAction
         )
     }
 
@@ -315,9 +365,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    fun submitSessionReview(sessionId: Long, goalStatus: GoalStatus?, note: String?) {
+        viewModelScope.launch {
+            repository.updateSessionReview(sessionId, goalStatus, note)
+            dismissCompletionDialog()
+        }
+    }
+
+    fun submitPostSessionReview(goalStatus: GoalStatus, note: String?) {
+        val session = _completionSession.value ?: return
+        submitSessionReview(session.id, goalStatus, note)
+    }
+
+    suspend fun startExamBlock(plan: ExamPlan): Result<Long> {
+        val targetProfile = profiles.value.firstOrNull { it.name == plan.profileName }
+            ?: profiles.value.firstOrNull()
+        val packages = targetProfile?.packageNames ?: selectedPackages.value.toList()
+        return startSession(
+            packages = packages,
+            durationMinutes = plan.targetDailyHours * 60,
+            goalText = "Exam prep: ${plan.title}",
+            profileName = plan.profileName,
+            escalationEnabled = true,
+            escalationAttemptTrigger = 2
+        )
+    }
+
+    fun submitDeviceLockReview(sessionId: Long, goalStatus: GoalStatus?, note: String?) {
+        viewModelScope.launch {
+            repository.updateDeviceLockReview(sessionId, goalStatus, note)
+            dismissDeviceLockCompletionDialog()
+        }
+    }
+
     fun clearCompletedDeviceLocks() {
         viewModelScope.launch {
             repository.clearCompletedDeviceLocks()
+        }
+    }
+
+    // Smart Presets Management
+    fun savePreset(preset: SmartPreset) {
+        viewModelScope.launch {
+            repository.savePreset(preset)
+        }
+    }
+
+    fun deletePreset(id: Long) {
+        viewModelScope.launch {
+            repository.deletePreset(id)
+        }
+    }
+
+    // Exam Plans Management
+    fun saveExamPlan(plan: ExamPlan) {
+        viewModelScope.launch {
+            repository.saveExamPlan(plan)
+        }
+    }
+
+    fun deleteExamPlan(id: Long) {
+        viewModelScope.launch {
+            repository.deleteExamPlan(id)
         }
     }
 

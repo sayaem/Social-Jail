@@ -18,5 +18,11 @@ data class LockSessionEntity(
     val expectedDurationMillis: Long = 0L,
     val completedAt: Long? = null,
     val goalText: String? = null,
-    val profileName: String? = null
+    val profileName: String? = null,
+    val escalationEnabled: Boolean = false,
+    val escalationAttemptTrigger: Int = 3,
+    val escalationAction: String = "DEVICE_LOCK",
+    val escalationTriggered: Boolean = false,
+    val goalStatus: String? = null, // "COMPLETED", "PARTIAL", "NOT_COMPLETED"
+    val reviewNote: String? = null
 )

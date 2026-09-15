@@ -40,6 +40,15 @@ interface LockSessionDao {
     @Query("UPDATE lock_sessions SET status = :status, completedAt = :completedAt WHERE id = :id")
     suspend fun updateSessionStatus(id: Long, status: String, completedAt: Long?)
 
+    @Query("UPDATE lock_sessions SET goalStatus = :goalStatus, reviewNote = :reviewNote WHERE id = :id")
+    suspend fun updateSessionReview(id: Long, goalStatus: String?, reviewNote: String?)
+
+    @Query("UPDATE lock_sessions SET escalationTriggered = 1 WHERE id = :id")
+    suspend fun markEscalationTriggered(id: Long)
+
     @Query("DELETE FROM lock_sessions WHERE id = :id AND status = 'SCHEDULED'")
     suspend fun deleteScheduledSession(id: Long)
+
+    @Query("DELETE FROM lock_sessions WHERE status = 'COMPLETED'")
+    suspend fun clearCompletedSessions()
 }

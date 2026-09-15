@@ -75,6 +75,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun LockConfirmationDialog(
@@ -84,12 +87,15 @@ fun LockConfirmationDialog(
     activeProfile: Profile? = null,
     isGoalPromptEnabled: Boolean = true,
     onDismiss: () -> Unit,
-    onConfirmLock: (durationMinutes: Int, goalText: String?) -> Unit
+    onConfirmLock: (durationMinutes: Int, goalText: String?, escalationEnabled: Boolean, escalationAttempts: Int) -> Unit
 ) {
     var currentStep by remember { mutableIntStateOf(1) }
     var durationMinutes by remember { mutableIntStateOf(initialDurationMinutes) }
     var selectedGoalCategory by remember { mutableStateOf("Study") }
     var customGoalText by remember { mutableStateOf("") }
+    var escalationEnabled by remember { mutableStateOf(false) }
+    var escalationAttempts by remember { mutableIntStateOf(3) }
+    var commitmentLevel by remember { mutableStateOf("HARDCORE") }
 
     val appMap = remember(allApps) { allApps.associateBy { it.packageName } }
     val lockedApps = remember(selectedPackages, allApps) {
@@ -181,13 +187,18 @@ fun LockConfirmationDialog(
                                     selectedCategory = selectedGoalCategory,
                                     onCategorySelected = { selectedGoalCategory = it },
                                     customText = customGoalText,
-                                    onCustomTextChanged = { customGoalText = it }
+                                    onCustomTextChanged = { customGoalText = it },
+                                    escalationEnabled = escalationEnabled,
+                                    onEscalationToggled = { escalationEnabled = it },
+                                    commitmentLevel = commitmentLevel,
+                                    onCommitmentSelected = { commitmentLevel = it }
                                 )
                             } else {
                                 StepFinalConfirmation(
                                     appCount = lockedApps.size,
                                     durationMinutes = durationMinutes,
-                                    goalText = null
+                                    goalText = null,
+                                    escalationEnabled = escalationEnabled
                                 )
                             }
                         }
@@ -200,7 +211,8 @@ fun LockConfirmationDialog(
                             StepFinalConfirmation(
                                 appCount = lockedApps.size,
                                 durationMinutes = durationMinutes,
-                                goalText = resolvedGoal
+                                goalText = resolvedGoal,
+                                escalationEnabled = escalationEnabled
                             )
                         }
                     }
@@ -231,7 +243,7 @@ fun LockConfirmationDialog(
 
                     Button(
                         onClick = {
-                            onConfirmLock(durationMinutes, finalGoal)
+                            onConfirmLock(durationMinutes, finalGoal, escalationEnabled, escalationAttempts)
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = LockCrimson,
@@ -381,7 +393,11 @@ private fun StepIntention(
     selectedCategory: String,
     onCategorySelected: (String) -> Unit,
     customText: String,
-    onCustomTextChanged: (String) -> Unit
+    onCustomTextChanged: (String) -> Unit,
+    escalationEnabled: Boolean,
+    onEscalationToggled: (Boolean) -> Unit,
+    commitmentLevel: String,
+    onCommitmentSelected: (String) -> Unit
 ) {
     val categories = listOf(
         "Study" to "📚",
@@ -436,7 +452,7 @@ private fun StepIntention(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         OutlinedTextField(
             value = customText,
@@ -455,6 +471,51 @@ private fun StepIntention(
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // ESCALATION MODE SWITCH (Feature 4)
+        Surface(
+            color = Color(0xFF1B1015),
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, if (escalationEnabled) LockCrimson.copy(alpha = 0.8f) else JailCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "⚡ Escalation Mode",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (escalationEnabled) LockCrimsonBright else TextWhite
+                        )
+                    }
+                    Text(
+                        text = "Escalate into Device Lock if you attempt to launch blocked apps 3 times.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SteelGray,
+                        fontSize = 11.sp
+                    )
+                }
+                Switch(
+                    checked = escalationEnabled,
+                    onCheckedChange = onEscalationToggled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = LockCrimson,
+                        uncheckedThumbColor = SteelGray,
+                        uncheckedTrackColor = Color(0xFF262A36)
+                    )
+                )
+            }
+        }
     }
 }
 
@@ -462,7 +523,8 @@ private fun StepIntention(
 private fun StepFinalConfirmation(
     appCount: Int,
     durationMinutes: Int,
-    goalText: String?
+    goalText: String?,
+    escalationEnabled: Boolean = false
 ) {
     val now = System.currentTimeMillis()
     val endTime = now + (durationMinutes * 60 * 1000L)
@@ -535,6 +597,16 @@ private fun StepFinalConfirmation(
                     ) {
                         Text("Goal", color = SteelGray, style = MaterialTheme.typography.bodyMedium)
                         Text("\"$goalText\"", color = TextWhite, fontWeight = FontWeight.Medium)
+                    }
+                }
+                if (escalationEnabled) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Escalation", color = SteelGray, style = MaterialTheme.typography.bodyMedium)
+                        Text("Active (3 attempts trigger)", color = LockCrimsonBright, fontWeight = FontWeight.Bold)
                     }
                 }
             }

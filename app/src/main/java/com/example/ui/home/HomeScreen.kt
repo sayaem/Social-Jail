@@ -81,6 +81,13 @@ import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextWhite
 import com.example.util.PermissionStatus
 
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Star
+import com.example.domain.model.SmartPreset
+
 @Composable
 fun HomeScreen(
     activeSession: LockSession?,
@@ -90,13 +97,16 @@ fun HomeScreen(
     defaultDurationMinutes: Int,
     permissionStatus: PermissionStatus,
     diagnosticReport: com.example.util.SocialJailDiagnostics.DiagnosticReport? = null,
+    smartPresets: List<SmartPreset> = emptyList(),
     onStartSessionClick: () -> Unit,
     onQuickJailClick: (minutes: Int) -> Unit,
+    onApplySmartPreset: (SmartPreset) -> Unit = {},
     onDeviceLockClick: () -> Unit,
     onManageAppsClick: () -> Unit,
     onProfilesClick: () -> Unit,
     onScheduleClick: () -> Unit,
     onStatisticsClick: () -> Unit,
+    onExamModeClick: () -> Unit = {},
     onSettingsClick: () -> Unit,
     onPermissionsClick: () -> Unit
 ) {
@@ -278,6 +288,166 @@ fun HomeScreen(
                             tint = LockCrimsonBright,
                             modifier = Modifier.size(20.dp)
                         )
+                    }
+                }
+            }
+
+            // QUICK PANIC / EMERGENCY FOCUS & SLEEP LOCK ROW (Features 7 & 8)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Emergency Focus Button (Feature 8)
+                    Surface(
+                        color = Color(0xFF261014),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, LockCrimson.copy(alpha = 0.6f)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                // 1-tap instant lock 25m emergency focus
+                                onQuickJailClick(25)
+                            }
+                            .testTag("emergency_focus_button")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = null,
+                                tint = LockCrimsonBright,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "EMERGENCY",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp,
+                                    color = LockCrimsonBright
+                                )
+                                Text(
+                                    text = "Instant 25m Lock",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextWhite
+                                )
+                            }
+                        }
+                    }
+
+                    // Sleep / Bedtime Lock Button (Feature 7)
+                    Surface(
+                        color = Color(0xFF10162A),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, SkyBlue.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                // Bedtime 8-hour lockdown
+                                onQuickJailClick(480)
+                            }
+                            .testTag("sleep_lock_button")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bedtime,
+                                contentDescription = null,
+                                tint = SkyBlueLight,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "SLEEP LOCK",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp,
+                                    color = SkyBlueLight
+                                )
+                                Text(
+                                    text = "8h Night Rest",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextWhite
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // SMART PRESETS SECTION (Feature 15)
+            if (smartPresets.isNotEmpty()) {
+                item {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "SMART PRESETS",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SkyBlueLight.copy(alpha = 0.9f),
+                                letterSpacing = 1.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "1-Tap Setup",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SteelGray,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        androidx.compose.foundation.lazy.LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(smartPresets.size) { index ->
+                                val preset = smartPresets[index]
+                                Surface(
+                                    color = Color(0xFF121724),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFF222B3F)),
+                                    modifier = Modifier
+                                        .clickable {
+                                            selectedMinutes = preset.durationMinutes
+                                            onApplySmartPreset(preset)
+                                        }
+                                        .testTag("preset_chip_${preset.id}")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = preset.emoji, fontSize = 16.sp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                text = preset.name,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = TextWhite
+                                            )
+                                            Text(
+                                                text = "${preset.durationMinutes}m • ${preset.commitmentLevel.name}",
+                                                fontSize = 10.sp,
+                                                color = SteelGray
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -613,7 +783,22 @@ fun HomeScreen(
                 )
             }
 
-            // 4. Discipline Telemetry Card
+            // 4. Exam Mode Card (Feature 6)
+            item {
+                RichGradientCard(
+                    title = "Exam Mode & Finals Lockdown",
+                    category = "Exam Mode",
+                    tags = listOf("multi-day", "high intensity"),
+                    icon = Icons.Default.School,
+                    iconAccentColor = DisciplineAmber,
+                    statusIcon = Icons.Default.School,
+                    statusColor = DisciplineAmber,
+                    onClick = onExamModeClick,
+                    testTag = "nav_exam_mode"
+                )
+            }
+
+            // 5. Discipline Telemetry Card
             item {
                 RichGradientCard(
                     title = "Telemetry & Impulse Stats",
@@ -628,7 +813,7 @@ fun HomeScreen(
                 )
             }
 
-            // 5. Settings Card
+            // 6. Settings Card
             item {
                 RichGradientCard(
                     title = "Integrity & Anti-Bypass",

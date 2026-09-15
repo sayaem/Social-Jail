@@ -34,6 +34,9 @@ interface DeviceLockSessionDao {
     @Query("UPDATE device_lock_sessions SET status = :status, completedAt = :completedAt WHERE id = :id")
     suspend fun updateSessionStatus(id: Long, status: String, completedAt: Long?)
 
+    @Query("UPDATE device_lock_sessions SET goalStatus = :goalStatus, reviewNote = :reviewNote WHERE id = :id")
+    suspend fun updateSessionReview(id: Long, goalStatus: String?, reviewNote: String?)
+
     @Query("DELETE FROM device_lock_sessions WHERE status = 'COMPLETED'")
     suspend fun clearCompletedSessions()
 }

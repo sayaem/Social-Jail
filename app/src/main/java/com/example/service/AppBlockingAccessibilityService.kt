@@ -123,7 +123,7 @@ class AppBlockingAccessibilityService : AccessibilityService() {
                     // CASE 1: Log blocker decision
                     SocialJailDiagnostics.logAppBlocked(packageName, session.id, session.endTime - now)
 
-                    // Record attempt locally
+                    // Record attempt locally & handle escalation
                     serviceScope.launch {
                         try {
                             val db = AppDatabase.getInstance(applicationContext)
@@ -142,6 +142,15 @@ class AppBlockingAccessibilityService : AccessibilityService() {
                                     timestamp = System.currentTimeMillis()
                                 )
                             )
+
+                            // Escalation Mode check
+                            if (session.escalationEnabled && !session.escalationTriggered) {
+                                val currentCount = db.blockAttemptDao().getSessionAttemptCountNow(session.id)
+                                if (currentCount >= session.escalationAttemptTrigger) {
+                                    val repo = com.example.data.repository.LockRepository(applicationContext)
+                                    repo.triggerEscalation(session.id)
+                                }
+                            }
                         } catch (e: Exception) {
                             // Non-critical background telemetry
                         }
