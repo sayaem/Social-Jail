@@ -1,27 +1,25 @@
 package com.example.ui.blocking
 
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -68,6 +66,13 @@ class BlockingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Ensure the blocking overlay appears over lockscreen/secure windows
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        )
+
         // Ensure back press takes user straight to device launcher/home
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -77,6 +82,8 @@ class BlockingActivity : ComponentActivity() {
 
         val packageName = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: ""
         val endTime = intent.getLongExtra(EXTRA_END_TIME, 0L)
+        val goalText = intent.getStringExtra(EXTRA_GOAL_TEXT)
+
         val appName = try {
             val pm = packageManager
             val info = pm.getApplicationInfo(packageName, 0)
@@ -91,6 +98,7 @@ class BlockingActivity : ComponentActivity() {
                     appName = appName,
                     packageName = packageName,
                     endTime = endTime,
+                    goalText = goalText,
                     onGoHome = { goToHomeScreen() }
                 )
             }
@@ -99,7 +107,6 @@ class BlockingActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        // If user tries to leave or recents-switch to the blocked app, immediately kick to Home
         goToHomeScreen()
     }
 
@@ -115,6 +122,8 @@ class BlockingActivity : ComponentActivity() {
     companion object {
         const val EXTRA_PACKAGE_NAME = "extra_blocked_pkg"
         const val EXTRA_END_TIME = "extra_end_time"
+        const val EXTRA_GOAL_TEXT = "extra_goal_text"
+        const val EXTRA_PROFILE_NAME = "extra_profile_name"
     }
 }
 
@@ -123,6 +132,7 @@ fun BlockingScreen(
     appName: String,
     packageName: String,
     endTime: Long,
+    goalText: String? = null,
     onGoHome: () -> Unit
 ) {
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -188,22 +198,13 @@ fun BlockingScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "APP LOCKED",
-                style = MaterialTheme.typography.labelLarge,
+                text = "${appName.uppercase()} IS LOCKED",
+                style = MaterialTheme.typography.titleLarge,
                 color = LockCrimsonBright,
-                letterSpacing = 4.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = appName,
-                style = MaterialTheme.typography.headlineLarge,
-                color = TextWhite,
+                letterSpacing = 2.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
@@ -211,13 +212,13 @@ fun BlockingScreen(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "$appName is currently locked.",
+                text = "Nice try. 😄",
                 style = MaterialTheme.typography.bodyMedium,
-                color = SteelGray,
+                color = SteelLight,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Countdown display
             Surface(
@@ -226,11 +227,11 @@ fun BlockingScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, JailCardBorder),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 12.dp)
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp)
+                    modifier = Modifier.padding(vertical = 20.dp, horizontal = 16.dp)
                 ) {
                     Text(
                         text = TimeUtils.formatRemaining(remaining),
@@ -242,7 +243,7 @@ fun BlockingScreen(
                         modifier = Modifier.testTag("blocking_remaining_timer")
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = "REMAINING",
@@ -253,9 +254,9 @@ fun BlockingScreen(
                     )
 
                     if (endTime > 0L) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "Until ${TimeUtils.formatTime(endTime)}",
+                            text = "Your session ends at ${TimeUtils.formatTime(endTime)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = SteelLight,
                             fontWeight = FontWeight.Medium
@@ -264,28 +265,47 @@ fun BlockingScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            // Goal reminder if present
+            if (!goalText.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Surface(
+                    color = Color(0xFF171B24),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, JailCardBorder),
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Goal: \"$goalText\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextWhite,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Stay with the plan.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SteelGray
+                        )
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = "Stay with the plan.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SteelGray,
+                    textAlign = TextAlign.Center
+                )
+            }
 
-            Text(
-                text = "«You chose this lock before it started.»",
-                style = MaterialTheme.typography.bodyMedium,
-                color = SteelGray,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
+            Spacer(modifier = Modifier.height(32.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Future-you can use this app after the lock expires.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF64748B),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(36.dp))
-
-            // Calm, non-bargaining exit button
+            // Non-bargaining return home action
             Button(
                 onClick = onGoHome,
                 colors = ButtonDefaults.buttonColors(
@@ -306,7 +326,7 @@ fun BlockingScreen(
                 )
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(
-                    text = "GO HOME",
+                    text = "RETURN HOME",
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )

@@ -16,5 +16,7 @@ data class LockSessionEntity(
     val blockedAppNames: String, // Comma separated app display names
     val startElapsedRealtime: Long = 0L,
     val expectedDurationMillis: Long = 0L,
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    val goalText: String? = null,
+    val profileName: String? = null
 )

@@ -352,6 +352,7 @@ fun CreateLockScreen(
                             ) {
                                 items(filteredApps, key = { it.packageName }) { app ->
                                     val isSelected = selectedPackageSet.contains(app.packageName)
+                                    val isImmune = app.isEssential
                                     Surface(
                                         color = if (isSelected) Color(0xFF241012) else JailDarkSurface,
                                         shape = RoundedCornerShape(10.dp),
@@ -361,7 +362,7 @@ fun CreateLockScreen(
                                         ),
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable {
+                                            .clickable(enabled = !isImmune) {
                                                 val newSet = selectedPackageSet.toMutableSet()
                                                 if (isSelected) newSet.remove(app.packageName) else newSet.add(app.packageName)
                                                 selectedPackageSet = newSet
@@ -374,10 +375,13 @@ fun CreateLockScreen(
                                         ) {
                                             Checkbox(
                                                 checked = isSelected,
+                                                enabled = !isImmune,
                                                 onCheckedChange = { checked ->
-                                                    val newSet = selectedPackageSet.toMutableSet()
-                                                    if (checked) newSet.add(app.packageName) else newSet.remove(app.packageName)
-                                                    selectedPackageSet = newSet
+                                                    if (!isImmune) {
+                                                        val newSet = selectedPackageSet.toMutableSet()
+                                                        if (checked) newSet.add(app.packageName) else newSet.remove(app.packageName)
+                                                        selectedPackageSet = newSet
+                                                    }
                                                 },
                                                 colors = CheckboxDefaults.colors(
                                                     checkedColor = LockCrimson,
@@ -407,12 +411,12 @@ fun CreateLockScreen(
                                                 )
                                             }
                                             Surface(
-                                                color = Color(0xFF1F2430),
+                                                color = if (isImmune) Color(0xFF1B2E1E) else Color(0xFF1F2430),
                                                 shape = RoundedCornerShape(6.dp)
                                             ) {
                                                 Text(
-                                                    text = app.category.title,
-                                                    color = SteelLight,
+                                                    text = if (isImmune) "ESSENTIAL" else app.category.title,
+                                                    color = if (isImmune) com.example.ui.theme.DisciplineGreen else SteelLight,
                                                     style = MaterialTheme.typography.labelSmall,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                                                 )

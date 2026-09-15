@@ -68,16 +68,38 @@ object PackageUtils {
         "com.microsoft.teams"
     )
 
-    fun isEssentialApp(packageName: String, contextPackageName: String): Boolean {
+    val CRITICAL_SYSTEM_SAFETY_PACKAGES = setOf(
+        "android",
+        "com.android.systemui",
+        "com.android.settings",
+        "com.android.phone",
+        "com.android.server.telecom",
+        "com.google.android.dialer",
+        "com.samsung.android.dialer",
+        "com.samsung.android.incallui",
+        "com.android.emergency",
+        "com.google.android.apps.safetyhub",
+        "com.google.android.packageinstaller",
+        "com.android.packageinstaller"
+    )
+
+    fun isCriticalSystemSafetyPackage(packageName: String, contextPackageName: String): Boolean {
         if (packageName == contextPackageName) return true
-        if (packageName.contains("dialer", ignoreCase = true) ||
-            packageName.contains("emergency", ignoreCase = true) ||
-            packageName.contains("telecom", ignoreCase = true) ||
-            packageName.contains("telephony", ignoreCase = true) ||
-            packageName.contains("incallui", ignoreCase = true)
+        if (CRITICAL_SYSTEM_SAFETY_PACKAGES.contains(packageName)) return true
+        val lower = packageName.lowercase()
+        if (lower.contains("emergency") ||
+            lower.contains("telecom") ||
+            lower.contains("telephony") ||
+            lower.contains("incallui") ||
+            lower.contains("dialer")
         ) {
             return true
         }
+        return false
+    }
+
+    fun isEssentialApp(packageName: String, contextPackageName: String): Boolean {
+        if (isCriticalSystemSafetyPackage(packageName, contextPackageName)) return true
         return ESSENTIAL_PREFIXES.any { packageName.startsWith(it, ignoreCase = true) }
     }
 

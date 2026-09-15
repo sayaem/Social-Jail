@@ -73,6 +73,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
@@ -81,6 +82,10 @@
 
         <receiver
             android:name=".service.LockAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".service.ScheduleTriggerReceiver"
             android:exported="false" />
 
     </application>

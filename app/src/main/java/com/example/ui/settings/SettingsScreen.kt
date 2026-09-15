@@ -1,7 +1,10 @@
 package com.example.ui.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,297 +13,434 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.DisciplineGreen
 import com.example.ui.theme.JailBlack
 import com.example.ui.theme.JailCardBorder
+import com.example.ui.theme.JailCardSurface
 import com.example.ui.theme.JailDarkSurface
 import com.example.ui.theme.LockCrimson
 import com.example.ui.theme.LockCrimsonBright
+import com.example.ui.theme.Spacing
 import com.example.ui.theme.SteelGray
 import com.example.ui.theme.SteelLight
+import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextWhite
 import com.example.util.PermissionStatus
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    isLockActive: Boolean,
+    defaultDurationMinutes: Int,
+    isGoalPromptEnabled: Boolean,
     permissionStatus: PermissionStatus,
+    onSetDefaultDuration: (Int) -> Unit,
+    onSetGoalPromptEnabled: (Boolean) -> Unit,
     onOpenPermissions: () -> Unit,
-    onBackClick: () -> Unit
+    onClearHistory: () -> Unit,
+    onClearStatistics: () -> Unit,
+    onBack: () -> Unit
 ) {
-    Column(
+    var showClearHistoryConfirm by remember { mutableStateOf(false) }
+    var showClearStatsConfirm by remember { mutableStateOf(false) }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(JailBlack)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .testTag("settings_screen")
     ) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = "Settings & Protection",
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onBackClick) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = TextWhite
                     )
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = JailDarkSurface)
-        )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "Settings",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Preferences and local device integrity",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SteelGray
+                    )
+                }
+            }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Lock Active Warning if currently locked
-            if (isLockActive) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Section: Session Defaults
                 item {
+                    Text(
+                        text = "SESSION CONFIGURATION",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SteelGray,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Surface(
-                        color = Color(0xFF260D0D),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, LockCrimson),
+                        color = JailCardSurface,
+                        shape = RoundedCornerShape(Spacing.cardCorner),
+                        border = BorderStroke(1.dp, JailCardBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = LockCrimsonBright,
-                                modifier = Modifier.size(28.dp)
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            // Default Duration Picker
+                            Text(
+                                text = "Default Session Duration",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextWhite,
+                                fontWeight = FontWeight.SemiBold
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "🔒 Settings Locked",
-                                    color = TextWhite,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = "Settings that could weaken enforcement are unavailable while a lock is active.",
-                                    color = SteelLight,
-                                    style = MaterialTheme.typography.bodySmall
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(30 to "30m", 60 to "1h", 120 to "2h", 240 to "4h").forEach { (mins, label) ->
+                                    val isSel = defaultDurationMinutes == mins
+                                    Surface(
+                                        color = if (isSel) Color(0xFF2E1216) else Color(0xFF14171E),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, if (isSel) LockCrimson else Color(0xFF222630)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { onSetDefaultDuration(mins) }
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.padding(vertical = 10.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (isSel) LockCrimsonBright else SteelLight,
+                                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Goal Prompt Switch
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Intention / Goal Prompt",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextWhite,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "Ask what you are protecting time for before locking",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SteelGray
+                                    )
+                                }
+                                Switch(
+                                    checked = isGoalPromptEnabled,
+                                    onCheckedChange = onSetGoalPromptEnabled,
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = LockCrimson,
+                                        uncheckedThumbColor = SteelGray,
+                                        uncheckedTrackColor = Color(0xFF262A36)
+                                    )
                                 )
                             }
                         }
                     }
                 }
-            }
 
-            item {
-                Text(
-                    text = "ANTI-BYPASS ARCHITECTURE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SteelGray,
-                    letterSpacing = 1.5.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                // Section: Enforcement & Accessibility Health
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "ENFORCEMENT INTEGRITY",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SteelGray,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
 
-            item {
-                ProtectionFeatureCard(
-                    title = "Reboot Survival",
-                    status = "ACTIVE",
-                    description = "Locks are saved with absolute Unix timestamps. If phone is restarted, BootReceiver immediately restores the active lock state.",
-                    icon = Icons.Default.RestartAlt
-                )
-            }
-
-            item {
-                ProtectionFeatureCard(
-                    title = "Time Tamper Resistance",
-                    status = "ACTIVE",
-                    description = "Cross-references system clock with elapsed monotonic hardware time to detect and resist manual system clock manipulation.",
-                    icon = Icons.Default.Security
-                )
-            }
-
-            item {
-                ProtectionFeatureCard(
-                    title = "Essential Apps Immunity",
-                    status = "PROTECTED",
-                    description = "Phone, Dialer, SMS, Emergency, Calculator, and Calendar are strictly protected from accidental blocking.",
-                    icon = Icons.Default.Phone
-                )
-            }
-
-            item {
-                Text(
-                    text = "DIAGNOSTICS & ENFORCEMENT",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SteelGray,
-                    letterSpacing = 1.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = JailDarkSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, JailCardBorder),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Surface(
+                        color = JailCardSurface,
+                        shape = RoundedCornerShape(Spacing.cardCorner),
+                        border = BorderStroke(1.dp, JailCardBorder),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenPermissions() }
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = "System Permissions",
-                                color = TextWhite,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyLarge
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Accessibility Enforcement",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextWhite,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    if (permissionStatus.isAccessibilityEnabled) {
+                                        Surface(
+                                            color = Color(0xFF0F2618),
+                                            shape = RoundedCornerShape(Spacing.pillCorner)
+                                        ) {
+                                            Text(
+                                                text = "ACTIVE",
+                                                color = DisciplineGreen,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Surface(
+                                            color = Color(0xFF2E1216),
+                                            shape = RoundedCornerShape(Spacing.pillCorner)
+                                        ) {
+                                            Text(
+                                                text = "NEEDS SETUP",
+                                                color = LockCrimsonBright,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Inspect and verify background permission integrity",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SteelGray
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = SteelGray
                             )
-                            Text(
-                                text = if (permissionStatus.isAllCriticalGranted) "All Good ✓" else "Needs Setup",
-                                color = if (permissionStatus.isAllCriticalGranted) DisciplineGreen else Color(0xFFFFB74D),
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Button(
-                            onClick = onOpenPermissions,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF1E2430),
-                                contentColor = TextWhite
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Review Permissions & Setup")
                         }
                     }
                 }
-            }
 
-            item {
-                Surface(
-                    color = JailDarkSurface,
-                    shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, JailCardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Philosophy",
-                            color = TextWhite,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Social Jail is built to prevent impulsive self-bypass, not fight device owners. The goal is personal discipline and intentional digital focus.",
-                            color = SteelGray,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                // Section: Local Data Management
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "DATA & STORAGE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SteelGray,
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        color = JailCardSurface,
+                        shape = RoundedCornerShape(Spacing.cardCorner),
+                        border = BorderStroke(1.dp, JailCardBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showClearHistoryConfirm = true }
+                                    .padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Clear Completed Session Logs",
+                                    color = TextWhite,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text("Clear", color = SteelGray, style = MaterialTheme.typography.labelSmall)
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showClearStatsConfirm = true }
+                                    .padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Reset Block Attempt Telemetry",
+                                    color = TextWhite,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text("Reset", color = SteelGray, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
                     }
+                }
+
+                // Section: Strict Privacy Statement
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = Color(0xFF0D1016),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFF1E232F)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = null,
+                                    tint = DisciplineGreen,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "PRIVACY MANIFESTO",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = DisciplineGreen,
+                                    letterSpacing = 1.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Social Jail runs entirely on-device.\n• No accounts\n• No analytics\n• No cloud sync\n• No telemetry\n• No personal data leaves this phone.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = SteelLight,
+                                lineHeight = 20.sp
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(36.dp))
                 }
             }
         }
     }
-}
 
-@Composable
-fun ProtectionFeatureCard(
-    title: String,
-    status: String,
-    description: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = JailDarkSurface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, JailCardBorder),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = LockCrimsonBright,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = title,
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                Surface(
-                    color = Color(0xFF0F2615),
-                    shape = RoundedCornerShape(4.dp)
+    if (showClearHistoryConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearHistoryConfirm = false },
+            title = { Text("Clear History?", color = TextWhite) },
+            text = { Text("Past completed session records will be deleted locally. Active locks are not affected.", color = SteelLight) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onClearHistory()
+                        showClearHistoryConfirm = false
+                    }
                 ) {
-                    Text(
-                        text = status,
-                        color = DisciplineGreen,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
+                    Text("Clear", color = LockCrimsonBright)
                 }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = description,
-                color = SteelGray,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearHistoryConfirm = false }) {
+                    Text("Cancel", color = SteelGray)
+                }
+            },
+            containerColor = JailDarkSurface
+        )
+    }
+
+    if (showClearStatsConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearStatsConfirm = false },
+            title = { Text("Reset Interception Counters?", color = TextWhite) },
+            text = { Text("This will reset impulse launch attempt counters to zero.", color = SteelLight) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onClearStatistics()
+                        showClearStatsConfirm = false
+                    }
+                ) {
+                    Text("Reset", color = LockCrimsonBright)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearStatsConfirm = false }) {
+                    Text("Cancel", color = SteelGray)
+                }
+            },
+            containerColor = JailDarkSurface
+        )
     }
 }

@@ -64,4 +64,28 @@ class ExampleRobolectricTest {
     assertTrue(session.isCurrentlyActive(now))
     assertTrue(session.remainingMillis(now) > 0)
   }
+
+  @Test
+  fun `profile presets are populated with valid essential exclusions`() {
+    val presets = com.example.domain.model.Profile.getDefaultPresets()
+    assertTrue(presets.isNotEmpty())
+    val study = presets.first { it.name == "Study" }
+    assertTrue(study.packageNames.contains("com.instagram.android"))
+    assertTrue(study.isPredefined)
+  }
+
+  @Test
+  fun `schedule time range format correctly`() {
+    val schedule = com.example.domain.model.Schedule(
+      id = 1,
+      title = "Night Lock",
+      daysOfWeek = setOf(1, 2, 3, 4, 5),
+      startHour = 22,
+      startMinute = 0,
+      durationMinutes = 480,
+      blockedPackageNames = listOf("com.instagram.android")
+    )
+    assertEquals("22:00 – 06:00", schedule.formattedTimeRange())
+    assertEquals("Mon–Fri", schedule.formattedDays())
+  }
 }

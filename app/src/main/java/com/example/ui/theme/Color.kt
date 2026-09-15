@@ -18,3 +18,9 @@ val SteelLight = Color(0xFFCBD5E1)
 val TextWhite = Color(0xFFF8FAFC)
 val TextMuted = Color(0xFF94A3B8)
 
+val SkyBlueLight = Color(0xFFBAE6FD)
+val SkyBlue = Color(0xFF38BDF8)
+val SkyBlueVibrant = Color(0xFF0EA5E9)
+val SkyBlueDeep = Color(0xFF0284C7)
+val SkyBlueGlow = Color(0x6638BDF8)
+

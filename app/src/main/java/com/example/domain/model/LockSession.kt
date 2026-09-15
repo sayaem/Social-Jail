@@ -14,17 +14,20 @@ data class LockSession(
     val blockedAppNames: List<String>,
     val startElapsedRealtime: Long = 0L,
     val expectedDurationMillis: Long = 0L,
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    val goalText: String? = null,
+    val profileName: String? = null
 ) {
     fun remainingMillis(currentTimeMillis: Long = System.currentTimeMillis()): Long {
         if (status == SessionStatus.COMPLETED) return 0L
 
-        // Anti-tamper verification: check if system clock was wound forward
         val clockRemaining = endTime - currentTimeMillis
-        if (startElapsedRealtime > 0L && expectedDurationMillis > 0L) {
-            val actualElapsed = SystemClock.elapsedRealtime() - startElapsedRealtime
+        val currentElapsedRealtime = SystemClock.elapsedRealtime()
+
+        // Anti-tamper verification (valid when device has not rebooted since session started)
+        if (startElapsedRealtime > 0L && expectedDurationMillis > 0L && currentElapsedRealtime >= startElapsedRealtime) {
+            val actualElapsed = currentElapsedRealtime - startElapsedRealtime
             val monotonicRemaining = expectedDurationMillis - actualElapsed
-            // If clock was moved forward artificially, enforce monotonic elapsed requirement
             if (clockRemaining <= 0 && monotonicRemaining > 5000L) {
                 return monotonicRemaining.coerceAtLeast(0L)
             }
@@ -48,7 +51,9 @@ data class LockSession(
             blockedAppNames = blockedAppNames.joinToString(","),
             startElapsedRealtime = startElapsedRealtime,
             expectedDurationMillis = expectedDurationMillis,
-            completedAt = completedAt
+            completedAt = completedAt,
+            goalText = goalText,
+            profileName = profileName
         )
     }
 
@@ -77,8 +82,37 @@ data class LockSession(
                 blockedAppNames = apps,
                 startElapsedRealtime = entity.startElapsedRealtime,
                 expectedDurationMillis = entity.expectedDurationMillis,
-                completedAt = entity.completedAt
+                completedAt = entity.completedAt,
+                goalText = entity.goalText,
+                profileName = entity.profileName
             )
+        }
+
+        /**
+         * Formats remaining time cleanly:
+         * - Over 24 hours: 1d 04h 23m
+         * - 1 hour to 24 hours: HH:MM:SS (e.g. 02:43:18)
+         * - Under 1 hour: MM:SS (e.g. 42:18)
+         */
+        fun formatCountdown(millis: Long): String {
+            if (millis <= 0L) return "00:00"
+            val totalSeconds = millis / 1000
+            val days = totalSeconds / 86400
+            val hours = (totalSeconds % 86400) / 3600
+            val minutes = (totalSeconds % 3600) / 60
+            val seconds = totalSeconds % 60
+
+            return when {
+                days > 0 -> {
+                    String.format("%dd %02dh %02dm", days, hours, minutes)
+                }
+                hours > 0 -> {
+                    String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                }
+                else -> {
+                    String.format("%02d:%02d", minutes, seconds)
+                }
+            }
         }
     }
 }

@@ -18,6 +18,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
         if (action != Intent.ACTION_BOOT_COMPLETED &&
+            action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
             action != Intent.ACTION_MY_PACKAGE_REPLACED &&
             action != Intent.ACTION_TIME_CHANGED &&
             action != Intent.ACTION_TIMEZONE_CHANGED
@@ -41,6 +42,10 @@ class BootReceiver : BroadcastReceiver() {
                             session
                         )
                         LockEnforcementService.start(context)
+                        android.util.Log.i(
+                            "SocialJail-Diagnostic",
+                            "[REBOOT_RESTORE] Device boot action '$action' handled. Hardcore Session #${session.id} successfully restored from persistent storage. ${session.remainingMillis(now) / 1000}s remaining."
+                        )
                     } else {
                         // Expired while phone was off
                         db.lockSessionDao().updateSessionStatus(
@@ -49,6 +54,10 @@ class BootReceiver : BroadcastReceiver() {
                             completedAt = now
                         )
                         AppBlockingAccessibilityService.clearBlockedPackages()
+                        android.util.Log.i(
+                            "SocialJail-Diagnostic",
+                            "[REBOOT_EXPIRED] Hardcore Session #${session.id} expired while device was powered off. Marked COMPLETED."
+                        )
                     }
                 }
 
