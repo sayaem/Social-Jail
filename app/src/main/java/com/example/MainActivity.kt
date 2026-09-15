@@ -11,6 +11,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -29,6 +35,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.ui.MainViewModel
 import com.example.ui.apps.AppSelectionScreen
+import com.example.ui.common.BottomNavItem
+import com.example.ui.common.RichBottomBar
 import com.example.ui.completion.SessionCompleteDialog
 import com.example.ui.home.HomeScreen
 import com.example.ui.lockflow.LockConfirmationDialog
@@ -121,10 +129,85 @@ fun SocialJailApp(viewModel: MainViewModel) {
         screenStack.removeAt(screenStack.size - 1)
     }
 
+    val isLockActive = activeSession != null && remainingMillis > 0
+    val bottomNavItems = remember {
+        listOf(
+            BottomNavItem("Focus", Icons.Default.Lock, "tab_focus"),
+            BottomNavItem("Vaults", Icons.Default.Apps, "tab_vaults"),
+            BottomNavItem("Profiles", Icons.Default.Tune, "tab_profiles"),
+            BottomNavItem("Stats", Icons.Default.BarChart, "tab_stats"),
+            BottomNavItem("Settings", Icons.Default.Settings, "tab_settings")
+        )
+    }
+
+    val currentTabIndex = when (currentScreen) {
+        Screen.Home -> 0
+        Screen.AppSelection -> 1
+        Screen.Profiles, Screen.Schedule -> 2
+        Screen.Statistics, Screen.History -> 3
+        Screen.Settings, Screen.Permissions -> 4
+        else -> 0
+    }
+
+    val showBottomBar = !isLockActive && currentScreen in listOf(
+        Screen.Home,
+        Screen.AppSelection,
+        Screen.Profiles,
+        Screen.Schedule,
+        Screen.Statistics,
+        Screen.Settings
+    )
+
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .background(JailBlack)
+            .background(JailBlack),
+        bottomBar = {
+            if (showBottomBar) {
+                RichBottomBar(
+                    items = bottomNavItems,
+                    selectedIndex = currentTabIndex,
+                    onItemSelected = { index ->
+                        when (index) {
+                            0 -> {
+                                screenStack.clear()
+                                screenStack.add(Screen.Home)
+                            }
+                            1 -> {
+                                viewModel.loadInstalledApps()
+                                if (currentScreen != Screen.AppSelection) {
+                                    screenStack.clear()
+                                    screenStack.add(Screen.Home)
+                                    screenStack.add(Screen.AppSelection)
+                                }
+                            }
+                            2 -> {
+                                viewModel.loadInstalledApps()
+                                if (currentScreen != Screen.Profiles) {
+                                    screenStack.clear()
+                                    screenStack.add(Screen.Home)
+                                    screenStack.add(Screen.Profiles)
+                                }
+                            }
+                            3 -> {
+                                if (currentScreen != Screen.Statistics) {
+                                    screenStack.clear()
+                                    screenStack.add(Screen.Home)
+                                    screenStack.add(Screen.Statistics)
+                                }
+                            }
+                            4 -> {
+                                if (currentScreen != Screen.Settings) {
+                                    screenStack.clear()
+                                    screenStack.add(Screen.Home)
+                                    screenStack.add(Screen.Settings)
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier

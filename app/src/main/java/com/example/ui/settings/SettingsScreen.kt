@@ -44,18 +44,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.DisciplineGreen
-import com.example.ui.theme.JailBlack
-import com.example.ui.theme.JailCardBorder
-import com.example.ui.theme.JailCardSurface
-import com.example.ui.theme.JailDarkSurface
-import com.example.ui.theme.LockCrimson
 import com.example.ui.theme.LockCrimsonBright
+import com.example.ui.theme.SkyBlue
+import com.example.ui.theme.SkyBlueLight
 import com.example.ui.theme.Spacing
 import com.example.ui.theme.SteelGray
 import com.example.ui.theme.SteelLight
@@ -81,7 +80,15 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(JailBlack)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF070A12),
+                        Color(0xFF0A0D18),
+                        Color(0xFF05060A)
+                    )
+                )
+            )
             .statusBarsPadding()
             .navigationBarsPadding()
             .testTag("settings_screen")
@@ -95,7 +102,7 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .padding(top = 4.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
@@ -108,15 +115,16 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "Settings",
+                        text = "Integrity & Security",
                         style = MaterialTheme.typography.titleLarge,
+                        fontFamily = FontFamily.Serif,
                         color = TextWhite,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Preferences and local device integrity",
                         style = MaterialTheme.typography.bodySmall,
-                        color = SteelGray
+                        color = SkyBlueLight
                     )
                 }
             }
@@ -132,16 +140,24 @@ fun SettingsScreen(
                     Text(
                         text = "SESSION CONFIGURATION",
                         style = MaterialTheme.typography.labelSmall,
-                        color = SteelGray,
+                        color = SkyBlueLight.copy(alpha = 0.9f),
                         letterSpacing = 1.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Surface(
-                        color = JailCardSurface,
-                        shape = RoundedCornerShape(Spacing.cardCorner),
-                        border = BorderStroke(1.dp, JailCardBorder),
+                        color = Color(0xFF0C101A),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF1B2030),
+                                    Color(0xFF151926)
+                                )
+                            )
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -160,9 +176,9 @@ fun SettingsScreen(
                                 listOf(30 to "30m", 60 to "1h", 120 to "2h", 240 to "4h").forEach { (mins, label) ->
                                     val isSel = defaultDurationMinutes == mins
                                     Surface(
-                                        color = if (isSel) Color(0xFF2E1216) else Color(0xFF14171E),
+                                        color = if (isSel) Color(0xFF131726) else Color(0xFF0C101A),
                                         shape = RoundedCornerShape(8.dp),
-                                        border = BorderStroke(1.dp, if (isSel) LockCrimson else Color(0xFF222630)),
+                                        border = BorderStroke(1.dp, if (isSel) SkyBlue.copy(alpha = 0.5f) else Color(0xFF222630)),
                                         modifier = Modifier
                                             .weight(1f)
                                             .clickable { onSetDefaultDuration(mins) }
@@ -174,7 +190,7 @@ fun SettingsScreen(
                                             Text(
                                                 text = label,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = if (isSel) LockCrimsonBright else SteelLight,
+                                                color = if (isSel) SkyBlueLight else SteelLight,
                                                 fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
                                             )
                                         }
@@ -208,7 +224,7 @@ fun SettingsScreen(
                                     onCheckedChange = onSetGoalPromptEnabled,
                                     colors = SwitchDefaults.colors(
                                         checkedThumbColor = Color.White,
-                                        checkedTrackColor = LockCrimson,
+                                        checkedTrackColor = SkyBlue,
                                         uncheckedThumbColor = SteelGray,
                                         uncheckedTrackColor = Color(0xFF262A36)
                                     )
@@ -224,16 +240,24 @@ fun SettingsScreen(
                     Text(
                         text = "ENFORCEMENT INTEGRITY",
                         style = MaterialTheme.typography.labelSmall,
-                        color = SteelGray,
+                        color = SkyBlueLight.copy(alpha = 0.9f),
                         letterSpacing = 1.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Surface(
-                        color = JailCardSurface,
-                        shape = RoundedCornerShape(Spacing.cardCorner),
-                        border = BorderStroke(1.dp, JailCardBorder),
+                        color = Color(0xFF0C101A),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF1B2030),
+                                    Color(0xFF151926)
+                                )
+                            )
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onOpenPermissions() }
@@ -302,24 +326,32 @@ fun SettingsScreen(
                     Text(
                         text = "DATA & STORAGE",
                         style = MaterialTheme.typography.labelSmall,
-                        color = SteelGray,
+                        color = SkyBlueLight.copy(alpha = 0.9f),
                         letterSpacing = 1.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Surface(
-                        color = JailCardSurface,
-                        shape = RoundedCornerShape(Spacing.cardCorner),
-                        border = BorderStroke(1.dp, JailCardBorder),
+                        color = Color(0xFF0C101A),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF1B2030),
+                                    Color(0xFF151926)
+                                )
+                            )
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { showClearHistoryConfirm = true }
-                                    .padding(vertical = 8.dp),
+                                    .padding(16.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -328,16 +360,21 @@ fun SettingsScreen(
                                     color = TextWhite,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
-                                Text("Clear", color = SteelGray, style = MaterialTheme.typography.labelSmall)
+                                Text("Clear", color = LockCrimsonBright, style = MaterialTheme.typography.labelSmall)
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color(0xFF1E2638))
+                            )
 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { showClearStatsConfirm = true }
-                                    .padding(vertical = 8.dp),
+                                    .padding(16.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -346,7 +383,7 @@ fun SettingsScreen(
                                     color = TextWhite,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
-                                Text("Reset", color = SteelGray, style = MaterialTheme.typography.labelSmall)
+                                Text("Reset", color = LockCrimsonBright, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -416,7 +453,7 @@ fun SettingsScreen(
                     Text("Cancel", color = SteelGray)
                 }
             },
-            containerColor = JailDarkSurface
+            containerColor = Color(0xFF131726)
         )
     }
 
@@ -440,7 +477,7 @@ fun SettingsScreen(
                     Text("Cancel", color = SteelGray)
                 }
             },
-            containerColor = JailDarkSurface
+            containerColor = Color(0xFF131726)
         )
     }
 }

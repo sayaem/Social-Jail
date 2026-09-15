@@ -2,6 +2,7 @@ package com.example.ui.apps
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,8 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,6 +66,9 @@ import com.example.ui.theme.JailCardSurface
 import com.example.ui.theme.JailDarkSurface
 import com.example.ui.theme.LockCrimson
 import com.example.ui.theme.LockCrimsonBright
+import com.example.ui.theme.SkyBlue
+import com.example.ui.theme.SkyBlueLight
+import com.example.ui.theme.SkyBlueVibrant
 import com.example.ui.theme.Spacing
 import com.example.ui.theme.SteelGray
 import com.example.ui.theme.SteelLight
@@ -128,7 +134,7 @@ fun AppSelectionScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
@@ -141,15 +147,16 @@ fun AppSelectionScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Manage Locked Apps",
+                        text = "App Vaults",
                         style = MaterialTheme.typography.titleLarge,
+                        fontFamily = FontFamily.Serif,
                         color = TextWhite,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${selectedPackages.size} selected",
+                        text = "${selectedPackages.size} restricted apps",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (selectedPackages.isNotEmpty()) LockCrimsonBright else SteelGray
+                        color = if (selectedPackages.isNotEmpty()) SkyBlueLight else SteelGray
                     )
                 }
             }
@@ -170,14 +177,14 @@ fun AppSelectionScreen(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = LockCrimson,
-                    unfocusedBorderColor = JailCardBorder,
+                    focusedBorderColor = SkyBlue,
+                    unfocusedBorderColor = Color(0xFF1E2638),
                     focusedTextColor = TextWhite,
                     unfocusedTextColor = TextWhite,
-                    focusedContainerColor = JailCardSurface,
-                    unfocusedContainerColor = JailCardSurface
+                    focusedContainerColor = Color(0xFF0F1322),
+                    unfocusedContainerColor = Color(0xFF0C0F1A)
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -257,44 +264,116 @@ fun AppSelectionScreen(
                         .fillMaxSize()
                         .padding(horizontal = 16.dp)
                 ) {
-                    // Apps List
+                    // Apps List (EchoVault Card Aesthetic)
                     items(filteredApps, key = { it.packageName }) { app ->
                         val isSelected = selectedPackages.contains(app.packageName)
+                        val borderBrush = if (isSelected) {
+                            Brush.linearGradient(
+                                listOf(
+                                    SkyBlue.copy(alpha = 0.8f),
+                                    Color(0xFF6366F1).copy(alpha = 0.6f),
+                                    Color(0xFFA855F7).copy(alpha = 0.4f)
+                                )
+                            )
+                        } else {
+                            Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF1B2030),
+                                    Color(0xFF151926)
+                                )
+                            )
+                        }
+
                         Surface(
-                            color = if (isSelected) Color(0xFF1F1215) else JailCardSurface,
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, if (isSelected) LockCrimson.copy(alpha = 0.6f) else JailCardBorder),
+                            color = if (isSelected) Color(0xFF111422) else Color(0xFF0C101A),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(if (isSelected) 1.3.dp else 1.dp, borderBrush),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
+                                .padding(vertical = 5.dp)
                                 .clickable { onToggleApp(app.packageName) }
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                AppLogoBadge(
-                                    packageName = app.packageName,
-                                    appName = app.appName,
-                                    size = 38.dp
-                                )
+                                // Rounded square icon container with subtle glow
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color(0xFF131726))
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) SkyBlue.copy(alpha = 0.5f) else Color(0xFF22293D),
+                                            RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AppLogoBadge(
+                                        packageName = app.packageName,
+                                        appName = app.appName,
+                                        size = 32.dp
+                                    )
+                                }
+
                                 Spacer(modifier = Modifier.width(14.dp))
+
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = app.appName,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.titleMedium,
                                         color = TextWhite,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Serif
                                     )
-                                    Text(
-                                        text = app.packageName,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = SteelGray,
-                                        maxLines = 1
-                                    )
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        val categoryName = when {
+                                            isSocialApp(app.packageName) -> "Social"
+                                            isEntertainmentApp(app.packageName) -> "Entertainment"
+                                            isBrowserApp(app.packageName) -> "Browser"
+                                            isGameApp(app.packageName) -> "Game"
+                                            else -> "App"
+                                        }
+
+                                        Surface(
+                                            color = Color(0xFF0C243B),
+                                            shape = RoundedCornerShape(5.dp),
+                                            border = BorderStroke(0.6.dp, SkyBlue.copy(alpha = 0.4f))
+                                        ) {
+                                            Text(
+                                                text = "Category: $categoryName",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = SkyBlueLight,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+
+                                        if (isSelected) {
+                                            Surface(
+                                                color = Color(0xFF261014),
+                                                shape = RoundedCornerShape(5.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Restricted",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = LockCrimsonBright,
+                                                    fontSize = 10.sp,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
+
                                 Checkbox(
                                     checked = isSelected,
                                     onCheckedChange = { onToggleApp(app.packageName) },

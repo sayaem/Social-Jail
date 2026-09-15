@@ -31,6 +31,22 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.alpha
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.LockSession
 import com.example.ui.common.AppLogoBadge
+import com.example.ui.common.RichCircularTimerRing
+import com.example.ui.theme.DisciplineGreen
 import com.example.ui.theme.JailBlack
 import com.example.ui.theme.JailCardBorder
 import com.example.ui.theme.JailCardSurface
@@ -70,6 +88,11 @@ fun ActiveSessionScreen(
         val format = SimpleDateFormat("h:mm a", Locale.getDefault())
         format.format(Date(session.endTime))
     }
+    
+    val isNewSession = remember(session.id) {
+        System.currentTimeMillis() - session.startTime < 3000L
+    }
+    var showActivationAnim by remember { mutableStateOf(isNewSession) }
 
     Box(
         modifier = Modifier
@@ -145,25 +168,81 @@ fun ActiveSessionScreen(
 
             Spacer(modifier = Modifier.height(36.dp))
 
-            // Dominant Countdown Display
-            Text(
-                text = LockSession.formatCountdown(remainingMillis),
-                fontFamily = FontFamily.Monospace,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Black,
-                color = TextWhite,
-                letterSpacing = 2.sp,
-                textAlign = TextAlign.Center,
+            // Dominant Circular Countdown Display (Screenshot 4 Focus Timer)
+            val totalDuration = (session.endTime - session.startTime).coerceAtLeast(1L)
+            val progress = (remainingMillis.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f)
+
+            RichCircularTimerRing(
+                progress = progress,
+                timeText = LockSession.formatCountdown(remainingMillis),
+                topStatusText = "FOCUS SESSION",
+                subtitleText = "Locked until $endsAtFormatted",
+                ringColor = LockCrimsonBright,
+                size = 240.dp,
                 modifier = Modifier.testTag("active_session_countdown")
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "Locked until $endsAtFormatted",
-                style = MaterialTheme.typography.bodyMedium,
-                color = SteelLight
-            )
+            // Impulse interception & Session Telemetry Row (Screenshot 4)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    color = Color(0xFF131726),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color(0xFF20263C)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "INTERCEPTED",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SteelGray,
+                            fontSize = 10.sp,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "$blockAttemptsCount attempts",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (blockAttemptsCount > 0) LockCrimsonBright else TextWhite
+                        )
+                    }
+                }
+
+                Surface(
+                    color = Color(0xFF131726),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color(0xFF20263C)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "STATUS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SteelGray,
+                            fontSize = 10.sp,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Hardcore Locked",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = DisciplineGreen
+                        )
+                    }
+                }
+            }
 
             // Optional Intention / Goal Card
             if (!session.goalText.isNullOrBlank()) {
@@ -296,6 +375,126 @@ fun ActiveSessionScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        if (showActivationAnim) {
+            JailActivationOverlay(
+                onAnimationFinished = { showActivationAnim = false }
+            )
+        }
+    }
+}
+
+@Composable
+fun JailActivationOverlay(onAnimationFinished: () -> Unit) {
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    
+    val screenHeightPx = with(density) { (configuration.screenHeightDp + 200).dp.toPx() }
+    val barCount = 6
+    val barYOffsets = List(barCount) { remember { Animatable(-screenHeightPx) } }
+    val overlayAlpha = remember { Animatable(1f) }
+    val redFlashAlpha = remember { Animatable(0f) }
+    val textScale = remember { Animatable(2f) }
+    val textAlpha = remember { Animatable(0f) }
+    
+    LaunchedEffect(Unit) {
+        barYOffsets.forEachIndexed { index, anim ->
+            launch {
+                delay(index * 40L)
+                anim.animateTo(
+                    0f, 
+                    animationSpec = spring(
+                        dampingRatio = 0.45f, 
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+            }
+        }
+        
+        delay((barCount * 40L) + 200L)
+        
+        launch {
+            redFlashAlpha.animateTo(0.5f, tween(50))
+            redFlashAlpha.animateTo(0f, tween(500))
+        }
+        
+        launch {
+            textAlpha.animateTo(1f, tween(100))
+            textScale.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium))
+        }
+        
+        delay(1200)
+        
+        overlayAlpha.animateTo(0f, tween(500))
+        onAnimationFinished()
+    }
+
+    if (overlayAlpha.value > 0f) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(overlayAlpha.value)
+                .background(Color.Black.copy(alpha = 0.85f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                barYOffsets.forEach { anim ->
+                    Box(
+                        modifier = Modifier
+                            .width(32.dp)
+                            .fillMaxHeight()
+                            .graphicsLayer { 
+                                translationY = anim.value
+                            }
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0xFF0F1115),
+                                        Color(0xFF1E2129),
+                                        Color(0xFF0F1115)
+                                    )
+                                )
+                            )
+                            .border(1.dp, Color.Black)
+                    )
+                }
+            }
+            
+            if (redFlashAlpha.value > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(LockCrimsonBright.copy(alpha = redFlashAlpha.value))
+                )
+            }
+            
+            if (textAlpha.value > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "LOCKED",
+                        style = MaterialTheme.typography.displayLarge,
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Black,
+                        color = LockCrimsonBright,
+                        letterSpacing = 12.sp,
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = textScale.value
+                                scaleY = textScale.value
+                                alpha = textAlpha.value
+                            }
+                    )
+                }
+            }
         }
     }
 }

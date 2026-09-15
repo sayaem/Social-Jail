@@ -45,8 +45,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,12 +56,8 @@ import androidx.compose.ui.window.Dialog
 import com.example.domain.model.Profile
 import com.example.domain.model.Schedule
 import com.example.ui.theme.DisciplineGreen
-import com.example.ui.theme.JailBlack
-import com.example.ui.theme.JailCardBorder
-import com.example.ui.theme.JailCardSurface
-import com.example.ui.theme.JailDarkSurface
-import com.example.ui.theme.LockCrimson
-import com.example.ui.theme.LockCrimsonBright
+import com.example.ui.theme.SkyBlue
+import com.example.ui.theme.SkyBlueLight
 import com.example.ui.theme.Spacing
 import com.example.ui.theme.SteelGray
 import com.example.ui.theme.SteelLight
@@ -81,7 +79,15 @@ fun ScheduleScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(JailBlack)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF070A12),
+                        Color(0xFF0A0D18),
+                        Color(0xFF05060A)
+                    )
+                )
+            )
             .statusBarsPadding()
             .navigationBarsPadding()
             .testTag("schedule_screen")
@@ -95,7 +101,7 @@ fun ScheduleScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .padding(top = 4.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
@@ -108,15 +114,16 @@ fun ScheduleScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Scheduled Locks",
+                        text = "Automated Lock",
                         style = MaterialTheme.typography.titleLarge,
+                        fontFamily = FontFamily.Serif,
                         color = TextWhite,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Automate self-discipline during recurring hours",
                         style = MaterialTheme.typography.bodySmall,
-                        color = SteelGray
+                        color = SkyBlueLight
                     )
                 }
                 IconButton(
@@ -126,7 +133,7 @@ fun ScheduleScreen(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "New Schedule",
-                        tint = LockCrimsonBright
+                        tint = SkyBlueLight
                     )
                 }
             }
@@ -135,9 +142,17 @@ fun ScheduleScreen(
 
             if (schedules.isEmpty()) {
                 Surface(
-                    color = JailCardSurface,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, JailCardBorder),
+                    color = Color(0xFF0C101A),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFF1B2030),
+                                Color(0xFF151926)
+                            )
+                        )
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -207,9 +222,16 @@ private fun ScheduleCard(
     val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
 
     Surface(
-        color = if (schedule.isEnabled) JailCardSurface else Color(0xFF101216),
+        color = if (schedule.isEnabled) Color(0xFF0C101A) else Color(0xFF101216),
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, if (schedule.isEnabled) JailCardBorder else Color(0xFF1E2129)),
+        border = BorderStroke(
+            1.dp,
+            if (schedule.isEnabled) Brush.linearGradient(
+                listOf(Color(0xFF1B2030), Color(0xFF151926))
+            ) else Brush.linearGradient(
+                listOf(Color(0xFF1E2129), Color(0xFF1E2129))
+            )
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -228,7 +250,7 @@ private fun ScheduleCard(
                     Text(
                         text = "${formatTime12Hour(schedule.startHour, schedule.startMinute)} • ${schedule.durationMinutes / 60}h lock",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (schedule.isEnabled) LockCrimsonBright else SteelGray
+                        color = if (schedule.isEnabled) SkyBlueLight else SteelGray
                     )
                 }
 
@@ -237,7 +259,7 @@ private fun ScheduleCard(
                     onCheckedChange = onToggle,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = LockCrimson,
+                        checkedTrackColor = SkyBlue,
                         uncheckedThumbColor = SteelGray,
                         uncheckedTrackColor = Color(0xFF262A36)
                     )
@@ -257,9 +279,9 @@ private fun ScheduleCard(
                         val dayNum = index + 1 // 1..7
                         val isActiveDay = schedule.daysOfWeek.contains(dayNum)
                         Surface(
-                            color = if (isActiveDay) (if (schedule.isEnabled) Color(0xFF2E1216) else Color(0xFF1F222B)) else Color.Transparent,
+                            color = if (isActiveDay) (if (schedule.isEnabled) Color(0xFF131726) else Color(0xFF1F222B)) else Color.Transparent,
                             shape = CircleShape,
-                            border = BorderStroke(1.dp, if (isActiveDay) LockCrimson.copy(alpha = 0.5f) else Color(0xFF2A2E3B)),
+                            border = BorderStroke(1.dp, if (isActiveDay) SkyBlue.copy(alpha = 0.5f) else Color(0xFF2A2E3B)),
                             modifier = Modifier.size(28.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -307,8 +329,16 @@ private fun CreateScheduleDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = JailDarkSurface,
-            border = BorderStroke(1.dp, JailCardBorder),
+            color = Color(0xFF0C101A),
+            border = BorderStroke(
+                1.dp,
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF1B2030),
+                        Color(0xFF151926)
+                    )
+                )
+            ),
             modifier = Modifier.fillMaxWidth(0.96f)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -336,12 +366,12 @@ private fun CreateScheduleDialog(
                     placeholder = { Text("e.g. Night Sleep Lock", color = SteelGray) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = LockCrimson,
-                        unfocusedBorderColor = JailCardBorder,
+                        focusedBorderColor = SkyBlue,
+                        unfocusedBorderColor = Color(0xFF1E2638),
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
-                        focusedContainerColor = JailCardSurface,
-                        unfocusedContainerColor = JailCardSurface
+                        focusedContainerColor = Color(0xFF05060A),
+                        unfocusedContainerColor = Color(0xFF05060A)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -358,9 +388,9 @@ private fun CreateScheduleDialog(
                     profiles.forEach { p ->
                         val isSel = selectedProfile?.id == p.id
                         Surface(
-                            color = if (isSel) Color(0xFF2E1216) else JailCardSurface,
+                            color = if (isSel) Color(0xFF131726) else Color(0xFF0C101A),
                             shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, if (isSel) LockCrimson else JailCardBorder),
+                            border = BorderStroke(1.dp, if (isSel) SkyBlue.copy(alpha = 0.5f) else Color(0xFF1E2638)),
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable { selectedProfile = p }
@@ -374,7 +404,7 @@ private fun CreateScheduleDialog(
                                 Text(
                                     text = p.name,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = if (isSel) LockCrimsonBright else SteelLight
+                                    color = if (isSel) SkyBlueLight else SteelLight
                                 )
                             }
                         }
@@ -393,16 +423,16 @@ private fun CreateScheduleDialog(
                     dayNames.forEach { (dayNum, label) ->
                         val isSel = selectedDays.contains(dayNum)
                         Surface(
-                            color = if (isSel) Color(0xFF2E1216) else JailCardSurface,
+                            color = if (isSel) Color(0xFF131726) else Color(0xFF0C101A),
                             shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.dp, if (isSel) LockCrimson else JailCardBorder),
+                            border = BorderStroke(1.dp, if (isSel) SkyBlue.copy(alpha = 0.5f) else Color(0xFF1E2638)),
                             modifier = Modifier.clickable {
                                 selectedDays = if (isSel) selectedDays - dayNum else selectedDays + dayNum
                             }
                         ) {
                             Text(
                                 text = label,
-                                color = if (isSel) LockCrimsonBright else SteelGray,
+                                color = if (isSel) SkyBlueLight else SteelGray,
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)
                             )
@@ -433,8 +463,10 @@ private fun CreateScheduleDialog(
                     },
                     enabled = title.isNotBlank() && selectedDays.isNotEmpty() && selectedProfile != null,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = LockCrimson,
-                        contentColor = Color.White
+                        containerColor = SkyBlue,
+                        contentColor = Color(0xFF070A12),
+                        disabledContainerColor = Color(0xFF131726),
+                        disabledContentColor = SteelGray
                     ),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier

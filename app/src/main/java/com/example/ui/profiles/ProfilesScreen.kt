@@ -2,6 +2,7 @@ package com.example.ui.profiles
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,8 +48,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,12 +60,9 @@ import com.example.domain.model.InstalledAppInfo
 import com.example.domain.model.Profile
 import com.example.ui.common.AppLogoBadge
 import com.example.ui.theme.DisciplineGreen
-import com.example.ui.theme.JailBlack
-import com.example.ui.theme.JailCardBorder
-import com.example.ui.theme.JailCardSurface
-import com.example.ui.theme.JailDarkSurface
-import com.example.ui.theme.LockCrimson
 import com.example.ui.theme.LockCrimsonBright
+import com.example.ui.theme.SkyBlue
+import com.example.ui.theme.SkyBlueLight
 import com.example.ui.theme.Spacing
 import com.example.ui.theme.SteelGray
 import com.example.ui.theme.SteelLight
@@ -84,7 +84,15 @@ fun ProfilesScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(JailBlack)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF070A12),
+                        Color(0xFF0A0D18),
+                        Color(0xFF05060A)
+                    )
+                )
+            )
             .statusBarsPadding()
             .navigationBarsPadding()
             .testTag("profiles_screen")
@@ -98,7 +106,7 @@ fun ProfilesScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .padding(top = 4.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
@@ -113,13 +121,14 @@ fun ProfilesScreen(
                     Text(
                         text = "Focus Profiles",
                         style = MaterialTheme.typography.titleLarge,
+                        fontFamily = FontFamily.Serif,
                         color = TextWhite,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Tailored presets for study, deep work, or sleep",
                         style = MaterialTheme.typography.bodySmall,
-                        color = SteelGray
+                        color = SkyBlueLight
                     )
                 }
                 IconButton(
@@ -129,7 +138,7 @@ fun ProfilesScreen(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "New Profile",
-                        tint = LockCrimsonBright
+                        tint = SkyBlue
                     )
                 }
             }
@@ -137,7 +146,7 @@ fun ProfilesScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(profiles, key = { it.id }) { profile ->
@@ -176,25 +185,57 @@ private fun ProfileCard(
     onSelect: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val borderBrush = if (isSelected) {
+        Brush.linearGradient(
+            listOf(
+                Color(0xFFA855F7).copy(alpha = 0.8f),
+                Color(0xFF6366F1).copy(alpha = 0.6f),
+                SkyBlue.copy(alpha = 0.4f)
+            )
+        )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                Color(0xFF1B2030),
+                Color(0xFF151926)
+            )
+        )
+    }
+
     Surface(
-        color = if (isSelected) Color(0xFF1E1013) else JailCardSurface,
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, if (isSelected) LockCrimson else JailCardBorder),
+        color = if (isSelected) Color(0xFF141021) else Color(0xFF0C101A),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderBrush),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onSelect() }
+                .padding(16.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = profile.iconEmoji, fontSize = 24.sp)
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF151926))
+                            .border(1.dp, if (isSelected) Color(0xFFA855F7).copy(alpha = 0.5f) else Color(0xFF22293D), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = profile.iconEmoji, fontSize = 24.sp)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
                             text = profile.name,
                             style = MaterialTheme.typography.titleMedium,
+                            fontFamily = FontFamily.Serif,
                             color = TextWhite,
                             fontWeight = FontWeight.Bold
                         )
@@ -209,13 +250,13 @@ private fun ProfileCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isSelected) {
                         Surface(
-                            color = Color(0xFF331418),
+                            color = Color(0xFF1E1738),
                             shape = RoundedCornerShape(Spacing.pillCorner),
-                            border = BorderStroke(1.dp, LockCrimson)
+                            border = BorderStroke(1.dp, Color(0xFF8B5CF6).copy(alpha = 0.5f))
                         ) {
                             Text(
                                 text = "ACTIVE",
-                                color = LockCrimsonBright,
+                                color = Color(0xFFDDD6FE),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
@@ -225,8 +266,8 @@ private fun ProfileCard(
                         Button(
                             onClick = onSelect,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF262A36),
-                                contentColor = TextWhite
+                                containerColor = Color(0xFF131726),
+                                contentColor = SkyBlueLight
                             ),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.height(34.dp)
@@ -303,8 +344,16 @@ private fun CreateProfileDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = JailDarkSurface,
-            border = BorderStroke(1.dp, JailCardBorder),
+            color = Color(0xFF0C101A),
+            border = BorderStroke(
+                1.dp,
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF1B2030),
+                        Color(0xFF151926)
+                    )
+                )
+            ),
             modifier = Modifier.fillMaxWidth(0.96f)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -332,12 +381,12 @@ private fun CreateProfileDialog(
                     placeholder = { Text("Profile Name (e.g. Reading)", color = SteelGray) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = LockCrimson,
-                        unfocusedBorderColor = JailCardBorder,
+                        focusedBorderColor = SkyBlue,
+                        unfocusedBorderColor = Color(0xFF1E2638),
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
-                        focusedContainerColor = JailCardSurface,
-                        unfocusedContainerColor = JailCardSurface
+                        focusedContainerColor = Color(0xFF05060A),
+                        unfocusedContainerColor = Color(0xFF05060A)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -352,9 +401,9 @@ private fun CreateProfileDialog(
                     emojis.forEach { emoji ->
                         val isSel = selectedEmoji == emoji
                         Surface(
-                            color = if (isSel) Color(0xFF2E1216) else JailCardSurface,
+                            color = if (isSel) Color(0xFF131726) else Color(0xFF0C101A),
                             shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, if (isSel) LockCrimson else JailCardBorder),
+                            border = BorderStroke(1.dp, if (isSel) SkyBlue else Color(0xFF1E2638)),
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable { selectedEmoji = emoji }
@@ -380,9 +429,9 @@ private fun CreateProfileDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Surface(
-                    color = JailCardSurface,
+                    color = Color(0xFF0C101A),
                     shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, JailCardBorder),
+                    border = BorderStroke(1.dp, Color(0xFF1E2638)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 180.dp)
@@ -421,7 +470,7 @@ private fun CreateProfileDialog(
                                         }
                                     },
                                     colors = CheckboxDefaults.colors(
-                                        checkedColor = LockCrimson,
+                                        checkedColor = SkyBlue,
                                         uncheckedColor = SteelGray
                                     )
                                 )
@@ -448,8 +497,10 @@ private fun CreateProfileDialog(
                     },
                     enabled = name.isNotBlank() && selectedPkgs.isNotEmpty(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = LockCrimson,
-                        contentColor = Color.White
+                        containerColor = SkyBlue,
+                        contentColor = Color(0xFF070A12),
+                        disabledContainerColor = Color(0xFF131726),
+                        disabledContentColor = SteelGray
                     ),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
