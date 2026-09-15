@@ -31,6 +31,15 @@ object TimeUtils {
         return sdf.format(Date(timestamp))
     }
 
+    fun formatEndTime(timestamp: Long): String {
+        val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
+        return sdf.format(Date(timestamp))
+    }
+
+    fun formatRemainingCountdown(millis: Long): String {
+        return formatRemaining(millis)
+    }
+
     fun formatDateTime(timestamp: Long): String {
         val sdf = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
         return sdf.format(Date(timestamp))

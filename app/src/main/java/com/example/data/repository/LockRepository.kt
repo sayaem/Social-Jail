@@ -9,9 +9,13 @@ import android.os.SystemClock
 import com.example.data.local.AppDatabase
 import com.example.data.local.dao.AppAttemptCount
 import com.example.data.local.dao.BlockAttemptDao
+import com.example.data.local.dao.DeviceLockSessionDao
 import com.example.data.local.dao.LockSessionDao
 import com.example.data.local.dao.ProfileDao
 import com.example.data.local.dao.ScheduleDao
+import com.example.domain.model.DeviceLockSession
+import com.example.domain.model.DeviceLockStats
+import com.example.domain.model.DeviceLockStatus
 import com.example.domain.model.LockMode
 import com.example.domain.model.LockSession
 import com.example.domain.model.Milestone
@@ -32,6 +36,7 @@ class LockRepository(
     private val db: AppDatabase = AppDatabase.getInstance(context)
 ) {
     private val sessionDao: LockSessionDao = db.lockSessionDao()
+    private val deviceLockDao: DeviceLockSessionDao = db.deviceLockSessionDao()
     private val profileDao: ProfileDao = db.profileDao()
     private val scheduleDao: ScheduleDao = db.scheduleDao()
     private val attemptDao: BlockAttemptDao = db.blockAttemptDao()
@@ -48,6 +53,53 @@ class LockRepository(
         list.map { LockSession.fromEntity(it) }
     }
 
+    val activeDeviceLockFlow: Flow<DeviceLockSession?> = deviceLockDao.getActiveSessionFlow().map { entity ->
+        entity?.let { DeviceLockSession.fromEntity(it) }
+    }
+
+    val completedDeviceLocksFlow: Flow<List<DeviceLockSession>> = deviceLockDao.getCompletedSessions().map { list ->
+        list.map { DeviceLockSession.fromEntity(it) }
+    }
+
+    val deviceLockStatsFlow: Flow<DeviceLockStats> = completedDeviceLocksFlow.map { list ->
+        var totalMillis = 0L
+        var longestMins = 0
+        val activeDaysSet = mutableSetOf<String>()
+
+        for (item in list) {
+            val dur = if (item.expectedDurationMillis > 0L) item.expectedDurationMillis else (item.durationMinutes * 60 * 1000L)
+            totalMillis += dur
+            if (item.durationMinutes > longestMins) {
+                longestMins = item.durationMinutes
+            }
+
+            val cal = Calendar.getInstance().apply { timeInMillis = item.endTime }
+            val dateKey = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH)}-${cal.get(Calendar.DAY_OF_MONTH)}"
+            activeDaysSet.add(dateKey)
+        }
+
+        var streak = 0
+        val now = System.currentTimeMillis()
+        var testCal = Calendar.getInstance().apply { timeInMillis = now }
+        while (true) {
+            val key = "${testCal.get(Calendar.YEAR)}-${testCal.get(Calendar.MONTH)}-${testCal.get(Calendar.DAY_OF_MONTH)}"
+            if (activeDaysSet.contains(key)) {
+                streak++
+                testCal.add(Calendar.DAY_OF_YEAR, -1)
+            } else {
+                break
+            }
+        }
+
+        DeviceLockStats(
+            totalSessionsCount = list.size,
+            completedSessionsCount = list.size,
+            totalProtectedMillis = totalMillis,
+            longestSessionMinutes = longestMins,
+            currentStreakDays = streak
+        )
+    }
+
     val profilesFlow: Flow<List<Profile>> = profileDao.getAllProfiles().map { list ->
         list.map { Profile.fromEntity(it) }
     }
@@ -62,6 +114,10 @@ class LockRepository(
 
     suspend fun getActiveSession(): LockSession? {
         return sessionDao.getActiveSession()?.let { LockSession.fromEntity(it) }
+    }
+
+    suspend fun getActiveDeviceLock(): DeviceLockSession? {
+        return deviceLockDao.getActiveSession()?.let { DeviceLockSession.fromEntity(it) }
     }
 
     suspend fun ensureDefaultProfilesSeeded() {
@@ -204,10 +260,67 @@ class LockRepository(
         sessionDao.updateSessionStatus(sessionId, SessionStatus.COMPLETED.name, System.currentTimeMillis())
         AppBlockingAccessibilityService.clearBlockedPackages()
         
-        // Remove uninstall protection when session naturally expires
-        com.example.util.SocialJailPolicyManager.applyUninstallProtection(context, false)
+        // Remove uninstall protection when session naturally expires (unless device lock is active)
+        val activeDeviceLock = deviceLockDao.getActiveSession()
+        if (activeDeviceLock == null) {
+            com.example.util.SocialJailPolicyManager.applyUninstallProtection(context, false)
+            LockEnforcementService.stop(context)
+        }
+    }
+
+    suspend fun startImmediateDeviceLock(
+        durationMinutes: Int,
+        goalText: String?
+    ): Result<Long> {
+        val currentActive = deviceLockDao.getActiveSession()
+        if (currentActive != null && DeviceLockSession.fromEntity(currentActive).remainingMillis() > 0) {
+            return Result.failure(IllegalStateException("A Device Lock is already active."))
+        }
+
+        val durationMillis = durationMinutes * 60 * 1000L
+        val now = System.currentTimeMillis()
+        val endTime = now + durationMillis
+        val elapsedRealtime = SystemClock.elapsedRealtime()
+        val isDeviceOwner = com.example.util.SocialJailPolicyManager.isDeviceOwner(context)
+
+        val session = DeviceLockSession(
+            startTime = now,
+            endTime = endTime,
+            durationMinutes = durationMinutes,
+            status = DeviceLockStatus.ACTIVE,
+            goalText = goalText?.trim()?.ifEmpty { null },
+            isDeviceOwnerMode = isDeviceOwner,
+            startElapsedRealtime = elapsedRealtime,
+            expectedDurationMillis = durationMillis
+        )
+
+        val id = deviceLockDao.insertSession(session.toEntity())
+
+        // Apply uninstall protection if Device Owner
+        com.example.util.SocialJailPolicyManager.applyUninstallProtection(context, true)
+
+        // Lock screen immediately via Device Admin
+        com.example.util.SocialJailPolicyManager.lockNow(context)
+
+        // Start ongoing high-priority enforcement notification
+        LockEnforcementService.start(context)
+
+        return Result.success(id)
+    }
+
+    suspend fun completeExpiredDeviceLock(sessionId: Long) {
+        deviceLockDao.updateSessionStatus(sessionId, DeviceLockStatus.COMPLETED.name, System.currentTimeMillis())
         
-        LockEnforcementService.stop(context)
+        // Check if any app session is still active
+        val activeAppSession = sessionDao.getActiveSession()
+        if (activeAppSession == null) {
+            com.example.util.SocialJailPolicyManager.applyUninstallProtection(context, false)
+            LockEnforcementService.stop(context)
+        }
+    }
+
+    suspend fun clearCompletedDeviceLocks() {
+        deviceLockDao.clearCompletedSessions()
     }
 
     // Profile Management

@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppPreferences
 import com.example.data.repository.LockRepository
+import com.example.domain.model.DeviceLockSession
+import com.example.domain.model.DeviceLockStats
 import com.example.domain.model.InstalledAppInfo
 import com.example.domain.model.LockMode
 import com.example.domain.model.LockSession
@@ -51,6 +53,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = emptyList()
         )
 
+    val activeDeviceLock: StateFlow<DeviceLockSession?> = repository.activeDeviceLockFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    val completedDeviceLocks: StateFlow<List<DeviceLockSession>> = repository.completedDeviceLocksFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val deviceLockStats: StateFlow<DeviceLockStats> = repository.deviceLockStatsFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = DeviceLockStats()
+        )
+
     val profiles: StateFlow<List<Profile>> = repository.profilesFlow
         .stateIn(
             scope = viewModelScope,
@@ -84,6 +107,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _activeRemainingMillis = MutableStateFlow(0L)
     val activeRemainingMillis: StateFlow<Long> = _activeRemainingMillis.asStateFlow()
 
+    private val _activeDeviceLockRemainingMillis = MutableStateFlow(0L)
+    val activeDeviceLockRemainingMillis: StateFlow<Long> = _activeDeviceLockRemainingMillis.asStateFlow()
+
     private val _selectedPackages = MutableStateFlow<Set<String>>(emptySet())
     val selectedPackages: StateFlow<Set<String>> = _selectedPackages.asStateFlow()
 
@@ -103,6 +129,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _completionSession = MutableStateFlow<LockSession?>(null)
     val completionSession: StateFlow<LockSession?> = _completionSession.asStateFlow()
 
+    private val _completionDeviceLockSession = MutableStateFlow<DeviceLockSession?>(null)
+    val completionDeviceLockSession: StateFlow<DeviceLockSession?> = _completionDeviceLockSession.asStateFlow()
+
     private val _completionAttempts = MutableStateFlow(0)
     val completionAttempts: StateFlow<Int> = _completionAttempts.asStateFlow()
 
@@ -115,6 +144,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val diagnosticReport: StateFlow<SocialJailDiagnostics.DiagnosticReport> = _diagnosticReport.asStateFlow()
 
     private var previousActiveSessionId: Long? = null
+    private var previousActiveDeviceLockId: Long? = null
 
     init {
         refreshPermissions()
@@ -125,25 +155,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ScheduleManager.refreshNextScheduleAlarm(getApplication())
         }
 
-        // 1-second countdown ticker for active session & diagnostic polling
+        // 1-second countdown ticker for active sessions & diagnostic polling
         viewModelScope.launch {
             while (true) {
-                val current = activeSession.value
-                val remaining = if (current != null) current.remainingMillis() else 0L
-                _activeRemainingMillis.value = remaining
+                val currentApp = activeSession.value
+                val remainingApp = if (currentApp != null) currentApp.remainingMillis() else 0L
+                _activeRemainingMillis.value = remainingApp
 
-                val isLockActive = current != null && remaining > 0
+                val currentDevice = activeDeviceLock.value
+                val remainingDevice = if (currentDevice != null) currentDevice.remainingMillis() else 0L
+                _activeDeviceLockRemainingMillis.value = remainingDevice
+
+                val isLockActive = (currentApp != null && remainingApp > 0) || (currentDevice != null && remainingDevice > 0)
                 _diagnosticReport.value = SocialJailDiagnostics.evaluateDiagnosticStatus(
                     getApplication(),
                     isLockActive
                 )
 
-                if (current != null) {
-                    previousActiveSessionId = current.id
-                    if (remaining <= 0) {
-                        handleSessionCompleted(current)
+                if (currentApp != null) {
+                    previousActiveSessionId = currentApp.id
+                    if (remainingApp <= 0) {
+                        handleSessionCompleted(currentApp)
                     }
                 }
+
+                if (currentDevice != null) {
+                    previousActiveDeviceLockId = currentDevice.id
+                    if (remainingDevice <= 0) {
+                        handleDeviceLockCompleted(currentDevice)
+                    }
+                }
+
                 delay(1000L)
             }
         }
@@ -155,17 +197,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (preferences.lastSeenCompletedSessionId != session.id) {
             preferences.lastSeenCompletedSessionId = session.id
             _completionSession.value = session
-            // Attempt count will be collected
         }
+    }
+
+    private suspend fun handleDeviceLockCompleted(session: DeviceLockSession) {
+        repository.completeExpiredDeviceLock(session.id)
+        _completionDeviceLockSession.value = session
     }
 
     fun dismissCompletionDialog() {
         _completionSession.value = null
     }
 
+    fun dismissDeviceLockCompletionDialog() {
+        _completionDeviceLockSession.value = null
+    }
+
     fun refreshPermissions() {
         _permissionStatus.value = PermissionUtils.getPermissionStatus(getApplication())
-        val isLockActive = (activeSession.value?.remainingMillis() ?: 0L) > 0
+        val isLockActive = ((activeSession.value?.remainingMillis() ?: 0L) > 0) || ((activeDeviceLock.value?.remainingMillis() ?: 0L) > 0)
         _diagnosticReport.value = SocialJailDiagnostics.evaluateDiagnosticStatus(
             getApplication(),
             isLockActive
@@ -253,6 +303,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             goalText = goalText,
             profileName = profileName
         )
+    }
+
+    suspend fun startDeviceLock(
+        durationMinutes: Int,
+        goalText: String?
+    ): Result<Long> {
+        return repository.startImmediateDeviceLock(
+            durationMinutes = durationMinutes,
+            goalText = goalText
+        )
+    }
+
+    fun clearCompletedDeviceLocks() {
+        viewModelScope.launch {
+            repository.clearCompletedDeviceLocks()
+        }
     }
 
     // Profiles Management

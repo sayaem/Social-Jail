@@ -1,6 +1,6 @@
 {
   "name": "Social Jail",
-  "description": "A hardcore, self-imposed app-blocking system that prevents access to distracting apps during lock sessions while keeping essential phone functions available.",
+  "description": "A hardcore digital discipline suite featuring App Jail for target app blocking and full-device Device Lock powered by native DevicePolicyManager and Lock Task APIs.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

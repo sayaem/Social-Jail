@@ -2,6 +2,7 @@ package com.example.ui.navigation
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
+    object DeviceLock : Screen("device_lock")
     object AppSelection : Screen("app_selection")
     object Profiles : Screen("profiles")
     object Schedule : Screen("schedule")

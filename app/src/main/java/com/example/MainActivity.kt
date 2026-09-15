@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Scaffold
@@ -38,6 +40,9 @@ import com.example.ui.apps.AppSelectionScreen
 import com.example.ui.common.BottomNavItem
 import com.example.ui.common.RichBottomBar
 import com.example.ui.completion.SessionCompleteDialog
+import com.example.ui.devicelock.DeviceLockActivity
+import com.example.ui.devicelock.DeviceLockCompleteDialog
+import com.example.ui.devicelock.DeviceLockScreen
 import com.example.ui.home.HomeScreen
 import com.example.ui.lockflow.LockConfirmationDialog
 import com.example.ui.lockflow.LockingCountdownOverlay
@@ -86,7 +91,15 @@ class MainActivity : ComponentActivity() {
                             onSplashFinished = { isSplashActive = false }
                         )
                     } else {
-                        SocialJailApp(viewModel = viewModel)
+                        SocialJailApp(
+                            viewModel = viewModel,
+                            onLaunchDeviceLockActivity = {
+                                val intent = Intent(this@MainActivity, DeviceLockActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                }
+                                startActivity(intent)
+                            }
+                        )
                     }
                 }
             }
@@ -95,7 +108,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SocialJailApp(viewModel: MainViewModel) {
+fun SocialJailApp(
+    viewModel: MainViewModel,
+    onLaunchDeviceLockActivity: () -> Unit = {}
+) {
     val coroutineScope = rememberCoroutineScope()
     val screenStack = remember { mutableStateListOf<Screen>(Screen.Home) }
     val currentScreen = screenStack.lastOrNull() ?: Screen.Home
@@ -104,6 +120,13 @@ fun SocialJailApp(viewModel: MainViewModel) {
     val scheduledSessions by viewModel.scheduledSessions.collectAsState()
     val completedSessions by viewModel.completedSessions.collectAsState()
     val remainingMillis by viewModel.activeRemainingMillis.collectAsState()
+
+    val activeDeviceLock by viewModel.activeDeviceLock.collectAsState()
+    val activeDeviceRemainingMillis by viewModel.activeDeviceLockRemainingMillis.collectAsState()
+    val deviceLockStats by viewModel.deviceLockStats.collectAsState()
+    val completedDeviceLocks by viewModel.completedDeviceLocks.collectAsState()
+    val completionDeviceLockSession by viewModel.completionDeviceLockSession.collectAsState()
+
     val permissionStatus by viewModel.permissionStatus.collectAsState()
     val diagnosticReport by viewModel.diagnosticReport.collectAsState()
     val installedApps by viewModel.installedApps.collectAsState()
@@ -133,8 +156,8 @@ fun SocialJailApp(viewModel: MainViewModel) {
     val bottomNavItems = remember {
         listOf(
             BottomNavItem("Focus", Icons.Default.Lock, "tab_focus"),
+            BottomNavItem("Device Lock", Icons.Default.PhoneAndroid, "tab_device_lock"),
             BottomNavItem("Vaults", Icons.Default.Apps, "tab_vaults"),
-            BottomNavItem("Profiles", Icons.Default.Tune, "tab_profiles"),
             BottomNavItem("Stats", Icons.Default.BarChart, "tab_stats"),
             BottomNavItem("Settings", Icons.Default.Settings, "tab_settings")
         )
@@ -142,8 +165,8 @@ fun SocialJailApp(viewModel: MainViewModel) {
 
     val currentTabIndex = when (currentScreen) {
         Screen.Home -> 0
-        Screen.AppSelection -> 1
-        Screen.Profiles, Screen.Schedule -> 2
+        Screen.DeviceLock -> 1
+        Screen.AppSelection, Screen.Profiles, Screen.Schedule -> 2
         Screen.Statistics, Screen.History -> 3
         Screen.Settings, Screen.Permissions -> 4
         else -> 0
@@ -151,6 +174,7 @@ fun SocialJailApp(viewModel: MainViewModel) {
 
     val showBottomBar = !isLockActive && currentScreen in listOf(
         Screen.Home,
+        Screen.DeviceLock,
         Screen.AppSelection,
         Screen.Profiles,
         Screen.Schedule,
@@ -174,19 +198,18 @@ fun SocialJailApp(viewModel: MainViewModel) {
                                 screenStack.add(Screen.Home)
                             }
                             1 -> {
+                                if (currentScreen != Screen.DeviceLock) {
+                                    screenStack.clear()
+                                    screenStack.add(Screen.Home)
+                                    screenStack.add(Screen.DeviceLock)
+                                }
+                            }
+                            2 -> {
                                 viewModel.loadInstalledApps()
                                 if (currentScreen != Screen.AppSelection) {
                                     screenStack.clear()
                                     screenStack.add(Screen.Home)
                                     screenStack.add(Screen.AppSelection)
-                                }
-                            }
-                            2 -> {
-                                viewModel.loadInstalledApps()
-                                if (currentScreen != Screen.Profiles) {
-                                    screenStack.clear()
-                                    screenStack.add(Screen.Home)
-                                    screenStack.add(Screen.Profiles)
                                 }
                             }
                             3 -> {
@@ -240,6 +263,9 @@ fun SocialJailApp(viewModel: MainViewModel) {
                                 showLockConfirmationDialog = true
                             }
                         },
+                        onDeviceLockClick = {
+                            screenStack.add(Screen.DeviceLock)
+                        },
                         onManageAppsClick = {
                             viewModel.loadInstalledApps()
                             screenStack.add(Screen.AppSelection)
@@ -259,6 +285,27 @@ fun SocialJailApp(viewModel: MainViewModel) {
                         },
                         onPermissionsClick = {
                             screenStack.add(Screen.Permissions)
+                        }
+                    )
+                }
+
+                Screen.DeviceLock -> {
+                    DeviceLockScreen(
+                        activeDeviceLock = activeDeviceLock,
+                        activeRemainingMillis = activeDeviceRemainingMillis,
+                        deviceLockStats = deviceLockStats,
+                        completedDeviceLocks = completedDeviceLocks,
+                        onInitiateLock = { duration, goal ->
+                            coroutineScope.launch {
+                                viewModel.startDeviceLock(duration, goal)
+                                onLaunchDeviceLockActivity()
+                            }
+                        },
+                        onOpenPortal = {
+                            onLaunchDeviceLockActivity()
+                        },
+                        onBackClick = {
+                            if (screenStack.size > 1) screenStack.removeAt(screenStack.size - 1)
                         }
                     )
                 }
@@ -338,7 +385,7 @@ fun SocialJailApp(viewModel: MainViewModel) {
                         onActivateDeviceAdmin = {
                             val intent = android.content.Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                                 putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, com.example.util.SocialJailPolicyManager.getAdminComponent(context))
-                                putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to prevent uninstallation of Social Jail during a lockdown session.")
+                                putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to immediately lock device screen and enforce Device Lock focus sessions.")
                             }
                             deviceAdminLauncher.launch(intent)
                         },
@@ -361,7 +408,6 @@ fun SocialJailApp(viewModel: MainViewModel) {
                 }
 
                 else -> {
-                    // Fallback to Home
                     HomeScreen(
                         activeSession = activeSession,
                         remainingMillis = remainingMillis,
@@ -375,6 +421,7 @@ fun SocialJailApp(viewModel: MainViewModel) {
                             confirmationInitialDuration = mins
                             showLockConfirmationDialog = true
                         },
+                        onDeviceLockClick = { screenStack.add(Screen.DeviceLock) },
                         onManageAppsClick = { screenStack.add(Screen.AppSelection) },
                         onProfilesClick = { screenStack.add(Screen.Profiles) },
                         onScheduleClick = { screenStack.add(Screen.Schedule) },
@@ -422,7 +469,7 @@ fun SocialJailApp(viewModel: MainViewModel) {
                 )
             }
 
-            // End of Session Completion Dialog
+            // End of App Jail Session Completion Dialog
             completionSession?.let { session ->
                 SessionCompleteDialog(
                     session = session,
@@ -430,6 +477,15 @@ fun SocialJailApp(viewModel: MainViewModel) {
                     onDismiss = { viewModel.dismissCompletionDialog() }
                 )
             }
+
+            // End of Device Lock Session Completion Dialog
+            completionDeviceLockSession?.let { deviceSession ->
+                DeviceLockCompleteDialog(
+                    session = deviceSession,
+                    onDismiss = { viewModel.dismissDeviceLockCompletionDialog() }
+                )
+            }
         }
     }
 }
+

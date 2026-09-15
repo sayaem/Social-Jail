@@ -5,10 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.data.local.dao.BlockAttemptDao
+import com.example.data.local.dao.DeviceLockSessionDao
 import com.example.data.local.dao.LockSessionDao
 import com.example.data.local.dao.ProfileDao
 import com.example.data.local.dao.ScheduleDao
 import com.example.data.local.entity.BlockAttemptEntity
+import com.example.data.local.entity.DeviceLockSessionEntity
 import com.example.data.local.entity.LockSessionEntity
 import com.example.data.local.entity.ProfileEntity
 import com.example.data.local.entity.ScheduleEntity
@@ -16,15 +18,17 @@ import com.example.data.local.entity.ScheduleEntity
 @Database(
     entities = [
         LockSessionEntity::class,
+        DeviceLockSessionEntity::class,
         ProfileEntity::class,
         ScheduleEntity::class,
         BlockAttemptEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun lockSessionDao(): LockSessionDao
+    abstract fun deviceLockSessionDao(): DeviceLockSessionDao
     abstract fun profileDao(): ProfileDao
     abstract fun scheduleDao(): ScheduleDao
     abstract fun blockAttemptDao(): BlockAttemptDao

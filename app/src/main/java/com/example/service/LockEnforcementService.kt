@@ -65,46 +65,69 @@ class LockEnforcementService : Service() {
 
             while (isActive) {
                 try {
-                    val activeEntity = db.lockSessionDao().getActiveSession()
-                    if (activeEntity == null) {
-                        // No active lock in database, stop enforcement
+                    val activeAppEntity = db.lockSessionDao().getActiveSession()
+                    val activeDeviceEntity = db.deviceLockSessionDao().getActiveSession()
+
+                    if (activeAppEntity == null && activeDeviceEntity == null) {
+                        // No active lock of any kind in database, stop enforcement
                         stopForeground(STOP_FOREGROUND_REMOVE)
                         stopSelf()
                         break
                     }
 
-                    val session = LockSession.fromEntity(activeEntity)
-                    val remaining = session.remainingMillis()
+                    // Handle Device Lock Session if active
+                    if (activeDeviceEntity != null) {
+                        val deviceSession = com.example.domain.model.DeviceLockSession.fromEntity(activeDeviceEntity)
+                        val deviceRemaining = deviceSession.remainingMillis()
 
-                    if (remaining <= 0) {
-                        // Lock Expired!
-                        db.lockSessionDao().updateSessionStatus(
-                            id = session.id,
-                            status = SessionStatus.COMPLETED.name,
-                            completedAt = System.currentTimeMillis()
-                        )
-                        AppBlockingAccessibilityService.clearBlockedPackages()
-                        showCompletionNotification()
-                        stopForeground(STOP_FOREGROUND_REMOVE)
-                        stopSelf()
-                        break
+                        if (deviceRemaining <= 0) {
+                            db.deviceLockSessionDao().updateSessionStatus(
+                                id = deviceSession.id,
+                                status = com.example.domain.model.DeviceLockStatus.COMPLETED.name,
+                                completedAt = System.currentTimeMillis()
+                            )
+                            showCompletionNotification("Device Lock Complete", "Your device lock session has completed. Excellent focus!")
+                        } else {
+                            if (tickCount % 3 == 0) {
+                                val remainingText = "🔒 Device Lock: ${TimeUtils.formatRemainingShort(deviceRemaining)} remaining"
+                                val notification = buildActiveNotification(remainingText, "Social Jail • Hardcore Focus Active")
+                                notificationManager.notify(NOTIFICATION_ID, notification)
+                            }
+                        }
                     }
 
-                    // Keep accessibility service cache synchronized
-                    AppBlockingAccessibilityService.updateBlockedPackages(
-                        session.blockedPackageNames.toSet(),
-                        session
-                    )
+                    // Handle App Jail Session if active
+                    if (activeAppEntity != null) {
+                        val session = LockSession.fromEntity(activeAppEntity)
+                        val remaining = session.remainingMillis()
 
-                    // Update notification once per second (every 3 ticks of 300ms)
-                    if (tickCount % 3 == 0) {
-                        val remainingText = "${TimeUtils.formatRemainingShort(remaining)} remaining"
-                        val notification = buildActiveNotification(remainingText)
-                        notificationManager.notify(NOTIFICATION_ID, notification)
+                        if (remaining <= 0) {
+                            // Lock Expired!
+                            db.lockSessionDao().updateSessionStatus(
+                                id = session.id,
+                                status = SessionStatus.COMPLETED.name,
+                                completedAt = System.currentTimeMillis()
+                            )
+                            AppBlockingAccessibilityService.clearBlockedPackages()
+                            showCompletionNotification("Focus Session Complete", "Your app jail lock session has ended.")
+                        } else {
+                            // Keep accessibility service cache synchronized
+                            AppBlockingAccessibilityService.updateBlockedPackages(
+                                session.blockedPackageNames.toSet(),
+                                session
+                            )
+
+                            // Update notification if no device lock is overriding it
+                            if (activeDeviceEntity == null && tickCount % 3 == 0) {
+                                val remainingText = "${TimeUtils.formatRemainingShort(remaining)} remaining"
+                                val notification = buildActiveNotification(remainingText)
+                                notificationManager.notify(NOTIFICATION_ID, notification)
+                            }
+
+                            // High-frequency secondary fallback usage stats check
+                            checkUsageStatsForeground(session)
+                        }
                     }
-
-                    // High-frequency secondary fallback usage stats check
-                    checkUsageStatsForeground(session)
 
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -182,7 +205,7 @@ class LockEnforcementService : Service() {
         }
     }
 
-    private fun buildActiveNotification(contentText: String): Notification {
+    private fun buildActiveNotification(contentText: String, titleText: String? = null): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -194,7 +217,7 @@ class LockEnforcementService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.notification_active_title))
+            .setContentTitle(titleText ?: getString(R.string.notification_active_title))
             .setContentText(contentText)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
@@ -204,10 +227,10 @@ class LockEnforcementService : Service() {
             .build()
     }
 
-    private fun showCompletionNotification() {
+    private fun showCompletionNotification(title: String? = null, message: String? = null) {
         val completeNotification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.notification_complete_title))
-            .setContentText(getString(R.string.notification_complete_desc))
+            .setContentTitle(title ?: getString(R.string.notification_complete_title))
+            .setContentText(message ?: getString(R.string.notification_complete_desc))
             .setSmallIcon(R.mipmap.ic_launcher)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

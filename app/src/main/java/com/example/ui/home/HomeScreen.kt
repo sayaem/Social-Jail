@@ -92,6 +92,7 @@ fun HomeScreen(
     diagnosticReport: com.example.util.SocialJailDiagnostics.DiagnosticReport? = null,
     onStartSessionClick: () -> Unit,
     onQuickJailClick: (minutes: Int) -> Unit,
+    onDeviceLockClick: () -> Unit,
     onManageAppsClick: () -> Unit,
     onProfilesClick: () -> Unit,
     onScheduleClick: () -> Unit,
@@ -206,6 +207,77 @@ fun HomeScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                    }
+                }
+            }
+
+            // PROMINENT DUAL MODE SELECTOR / PROMOTION FOR DEVICE LOCK
+            item {
+                Surface(
+                    color = Color(0xFF1E0A12),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.2.dp, LockCrimson.copy(alpha = 0.7f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onDeviceLockClick() }
+                        .testTag("home_device_lock_card")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            color = LockCrimson.copy(alpha = 0.25f),
+                            shape = CircleShape,
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = LockCrimsonBright,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "🔒 DEVICE LOCK",
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp,
+                                    color = TextWhite,
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    color = LockCrimson,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "NEW",
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Black,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Locks entire device using DevicePolicyManager APIs.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFFCA5A5),
+                                fontSize = 11.sp
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Open Device Lock",
+                            tint = LockCrimsonBright,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -479,6 +551,21 @@ fun HomeScreen(
                         fontSize = 11.sp
                     )
                 }
+            }
+
+            // 0. Device Lock Hardware Vault Card
+            item {
+                RichGradientCard(
+                    title = "Hardcore Device Lock",
+                    category = "Hardware Kiosk",
+                    tags = listOf("device-level", "lockNow()", "kiosk"),
+                    icon = Icons.Default.Lock,
+                    iconAccentColor = LockCrimsonBright,
+                    statusIcon = Icons.Default.Shield,
+                    statusColor = LockCrimsonBright,
+                    onClick = onDeviceLockClick,
+                    testTag = "nav_device_lock_vault"
+                )
             }
 
             // 1. Manage Apps Vault Card (EchoVault glowing gradient card style!)

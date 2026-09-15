@@ -47,6 +47,16 @@
             android:turnScreenOn="true"
             android:theme="@style/Theme.MyApplication" />
 
+        <activity
+            android:name=".ui.devicelock.DeviceLockActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:lockTaskMode="if_whitelisted"
+            android:theme="@style/Theme.MyApplication" />
+
         <service
             android:name=".service.AppBlockingAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
