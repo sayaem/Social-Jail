@@ -318,13 +318,30 @@ fun SocialJailApp(viewModel: MainViewModel) {
                 }
 
                 Screen.Settings -> {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    var isDeviceAdmin by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.example.util.SocialJailPolicyManager.isDeviceAdmin(context)) }
+                    var isDeviceOwner by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.example.util.SocialJailPolicyManager.isDeviceOwner(context)) }
+                    
+                    val deviceAdminLauncher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) {
+                        isDeviceAdmin = com.example.util.SocialJailPolicyManager.isDeviceAdmin(context)
+                    }
+
                     SettingsScreen(
                         defaultDurationMinutes = defaultDurationMinutes,
                         isGoalPromptEnabled = isGoalPromptEnabled,
                         permissionStatus = permissionStatus,
+                        isDeviceAdmin = isDeviceAdmin,
+                        isDeviceOwner = isDeviceOwner,
                         onSetDefaultDuration = { mins -> viewModel.setDefaultDuration(mins) },
                         onSetGoalPromptEnabled = { enabled -> viewModel.setGoalPromptEnabled(enabled) },
                         onOpenPermissions = { screenStack.add(Screen.Permissions) },
+                        onActivateDeviceAdmin = {
+                            val intent = android.content.Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                                putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, com.example.util.SocialJailPolicyManager.getAdminComponent(context))
+                                putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Required to prevent uninstallation of Social Jail during a lockdown session.")
+                            }
+                            deviceAdminLauncher.launch(intent)
+                        },
                         onClearHistory = { viewModel.clearSessionHistory() },
                         onClearStatistics = { viewModel.clearStatistics() },
                         onBack = {

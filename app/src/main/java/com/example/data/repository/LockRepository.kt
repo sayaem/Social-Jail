@@ -108,6 +108,9 @@ class LockRepository(
         // Immediately update accessibility in-memory cache
         AppBlockingAccessibilityService.updateBlockedPackages(packages.toSet(), createdSession)
 
+        // Enforce uninstall protection if configured as Device Owner
+        com.example.util.SocialJailPolicyManager.applyUninstallProtection(context, true)
+
         // Start persistent foreground service
         LockEnforcementService.start(context)
 
@@ -200,6 +203,10 @@ class LockRepository(
     suspend fun completeExpiredSession(sessionId: Long) {
         sessionDao.updateSessionStatus(sessionId, SessionStatus.COMPLETED.name, System.currentTimeMillis())
         AppBlockingAccessibilityService.clearBlockedPackages()
+        
+        // Remove uninstall protection when session naturally expires
+        com.example.util.SocialJailPolicyManager.applyUninstallProtection(context, false)
+        
         LockEnforcementService.stop(context)
     }
 

@@ -1,4 +1,6 @@
 package com.example.ui.schedule
+import androidx.compose.ui.text.style.TextOverflow
+
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -240,20 +242,24 @@ private fun ScheduleCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = schedule.title,
                         style = MaterialTheme.typography.titleMedium,
                         color = if (schedule.isEnabled) TextWhite else SteelGray,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${formatTime12Hour(schedule.startHour, schedule.startMinute)} • ${schedule.durationMinutes / 60}h lock",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (schedule.isEnabled) SkyBlueLight else SteelGray
+                        color = if (schedule.isEnabled) SkyBlueLight else SteelGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-
+                Spacer(modifier = Modifier.width(8.dp))
                 Switch(
                     checked = schedule.isEnabled,
                     onCheckedChange = onToggle,

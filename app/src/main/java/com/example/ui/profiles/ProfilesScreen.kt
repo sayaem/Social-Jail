@@ -1,4 +1,10 @@
 package com.example.ui.profiles
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.text.style.TextOverflow
+
+import androidx.compose.foundation.layout.FlowRow
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -219,7 +225,10 @@ private fun ProfileCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
                             .size(46.dp)
@@ -231,22 +240,26 @@ private fun ProfileCard(
                         Text(text = profile.iconEmoji, fontSize = 24.sp)
                     }
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = profile.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontFamily = FontFamily.Serif,
                             color = TextWhite,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "${profile.packageNames.size} apps • ${formatDuration(profile.defaultDurationMinutes)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = SteelGray
+                            color = SteelGray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-
+                Spacer(modifier = Modifier.width(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isSelected) {
                         Surface(
@@ -293,34 +306,45 @@ private fun ProfileCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Apps summary pills
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                profile.packageNames.take(4).forEach { pkg ->
-                    Surface(
-                        color = Color(0xFF13161C),
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Text(
-                            text = pkg.substringAfterLast('.'),
-                            color = SteelLight,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
+            if (profile.packageNames.isNotEmpty()) {
+                val maxChips = 12
+                val displayPackages = profile.packageNames.take(maxChips)
+                val extraCount = profile.packageNames.size - maxChips
+                
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    displayPackages.forEach { pkg ->
+                        Surface(
+                            color = Color(0xFF13161C),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = pkg.substringAfterLast('.'),
+                                color = SteelLight,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
                     }
-                }
-                if (profile.packageNames.size > 4) {
-                    Surface(
-                        color = Color(0xFF13161C),
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Text(
-                            text = "+${profile.packageNames.size - 4} more",
-                            color = SteelGray,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
+                    if (extraCount > 0) {
+                        Surface(
+                            color = Color(0xFF13161C),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "+$extraCount more",
+                                color = SteelGray,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
                     }
                 }
             }

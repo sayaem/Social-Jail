@@ -1,7 +1,9 @@
 package com.example.ui.common
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -21,6 +23,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
@@ -145,9 +151,10 @@ fun RichGradientCard(
 
                 if (category != null || tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         if (category != null) {
                             Surface(
@@ -170,13 +177,15 @@ fun RichGradientCard(
                                         style = MaterialTheme.typography.labelSmall,
                                         color = SkyBlueLight,
                                         fontWeight = FontWeight.SemiBold,
-                                        fontSize = 10.sp
+                                        fontSize = 10.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
                         }
 
-                        tags.take(2).forEach { tag ->
+                        tags.forEach { tag ->
                             Surface(
                                 color = Color(0xFF151926),
                                 shape = RoundedCornerShape(6.dp)
@@ -186,6 +195,8 @@ fun RichGradientCard(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = SteelLight,
                                     fontSize = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
@@ -315,13 +326,22 @@ fun RichCircularTimerRing(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Large Countdown Digits
+            val timeFontSize = when {
+                timeText.length >= 8 -> 28.sp
+                timeText.length >= 6 -> 34.sp
+                else -> 38.sp
+            }
+            val timeLetterSpacing = if (timeText.length >= 8) 0.5.sp else 2.sp
+
             Text(
                 text = timeText,
-                fontSize = 38.sp,
+                fontSize = timeFontSize,
                 fontWeight = FontWeight.Bold,
                 color = TextWhite,
-                letterSpacing = 2.sp,
-                fontFamily = FontFamily.SansSerif
+                letterSpacing = timeLetterSpacing,
+                fontFamily = FontFamily.SansSerif,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -348,8 +368,11 @@ fun RichDurationPresetRow(
     accentColor: Color = SkyBlue,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(scrollState),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         presets.forEach { (mins, label) ->
@@ -362,19 +385,19 @@ fun RichDurationPresetRow(
                     if (isSelected) accentColor else Color(0xFF242C40)
                 ),
                 modifier = Modifier
-                    .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .clickable { onSelectDuration(mins) }
             ) {
                 Box(
-                    modifier = Modifier.padding(vertical = 12.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelLarge,
                         color = if (isSelected) Color.White else SteelLight,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1
                     )
                 }
             }

@@ -1,4 +1,6 @@
 package com.example.ui.home
+import androidx.compose.ui.text.style.TextOverflow
+
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -42,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -109,13 +112,14 @@ fun HomeScreen(
     var selectedMinutes by remember(defaultDurationMinutes) {
         mutableIntStateOf(defaultDurationMinutes.coerceAtLeast(15))
     }
+    var showCustomTimeDialog by remember { mutableStateOf(false) }
 
     val presets = listOf(
         15 to "15m",
-        25 to "25m",
         30 to "30m",
         60 to "1h",
-        120 to "2h"
+        120 to "2h",
+        -1 to "..."
     )
 
     // Formatted duration string for the center ring (e.g. "25:00" or "02:00:00")
@@ -353,8 +357,12 @@ fun HomeScreen(
                             presets = presets,
                             selectedDurationMinutes = selectedMinutes,
                             onSelectDuration = { mins ->
-                                selectedMinutes = mins
-                                onQuickJailClick(mins)
+                                if (mins == -1) {
+                                    showCustomTimeDialog = true
+                                } else {
+                                    selectedMinutes = mins
+                                    onQuickJailClick(mins)
+                                }
                             },
                             accentColor = SkyBlue
                         )
@@ -549,6 +557,18 @@ fun HomeScreen(
             }
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
+        }
+
+        if (showCustomTimeDialog) {
+            CustomTimePickerDialog(
+                initialMinutes = selectedMinutes,
+                onDismiss = { showCustomTimeDialog = false },
+                onConfirm = { mins ->
+                    showCustomTimeDialog = false
+                    selectedMinutes = mins
+                    onQuickJailClick(mins)
+                }
+            )
         }
     }
 }

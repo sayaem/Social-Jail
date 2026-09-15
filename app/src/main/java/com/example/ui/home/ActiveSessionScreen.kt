@@ -1,4 +1,6 @@
 package com.example.ui.home
+import androidx.compose.ui.text.style.TextOverflow
+
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

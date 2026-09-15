@@ -67,9 +67,12 @@ fun SettingsScreen(
     defaultDurationMinutes: Int,
     isGoalPromptEnabled: Boolean,
     permissionStatus: PermissionStatus,
+    isDeviceAdmin: Boolean,
+    isDeviceOwner: Boolean,
     onSetDefaultDuration: (Int) -> Unit,
     onSetGoalPromptEnabled: (Boolean) -> Unit,
     onOpenPermissions: () -> Unit,
+    onActivateDeviceAdmin: () -> Unit,
     onClearHistory: () -> Unit,
     onClearStatistics: () -> Unit,
     onBack: () -> Unit
@@ -384,6 +387,152 @@ fun SettingsScreen(
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Text("Reset", color = LockCrimsonBright, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+
+                // Section: Anti-Uninstall & Device Management
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "ANTI-UNINSTALL PROTECTION",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SkyBlueLight.copy(alpha = 0.9f),
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = Color(0xFF0C101A),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(
+                            1.dp,
+                            Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF1B2030),
+                                    Color(0xFF151926)
+                                )
+                            )
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column {
+                            // Level 2: Device Admin
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { if (!isDeviceAdmin && !isDeviceOwner) onActivateDeviceAdmin() }
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Level 2: Device Administrator",
+                                        color = TextWhite,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Natively prevents uninstallation from the launcher. Can be deactivated manually in settings.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SteelGray
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                if (isDeviceOwner) {
+                                    Text("OVERRIDDEN", color = SteelGray, style = MaterialTheme.typography.labelSmall)
+                                } else if (isDeviceAdmin) {
+                                    Surface(
+                                        color = Color(0xFF0F2618),
+                                        shape = RoundedCornerShape(Spacing.pillCorner)
+                                    ) {
+                                        Text(
+                                            text = "ACTIVE",
+                                            color = DisciplineGreen,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                } else {
+                                    Text("ACTIVATE", color = SkyBlue, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color(0xFF1E2638))
+                            )
+                            
+                            // Level 3: Device Owner
+                            var showDOInstructions by remember { mutableStateOf(false) }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showDOInstructions = true }
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Level 3: Device Owner",
+                                        color = TextWhite,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Maximum enforcement. OS natively blocks uninstallation during lockdown. Requires ADB setup.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SteelGray
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                if (isDeviceOwner) {
+                                    Surface(
+                                        color = Color(0xFF0F2618),
+                                        shape = RoundedCornerShape(Spacing.pillCorner)
+                                    ) {
+                                        Text(
+                                            text = "ACTIVE",
+                                            color = DisciplineGreen,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                } else {
+                                    Text("SETUP", color = SteelLight, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            
+                            if (showDOInstructions) {
+                                AlertDialog(
+                                    onDismissRequest = { showDOInstructions = false },
+                                    title = { Text("Device Owner Setup", color = TextWhite) },
+                                    text = { 
+                                        Column {
+                                            Text("Android strictly forbids apps from making themselves uninstallable unless they are the Device Owner. To enable Level 3 protection:", color = SteelLight, style = MaterialTheme.typography.bodySmall)
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text("1. Remove ALL accounts from your device in Android Settings > Accounts.", color = TextWhite, style = MaterialTheme.typography.bodySmall)
+                                            Text("2. Connect via ADB.", color = TextWhite, style = MaterialTheme.typography.bodySmall)
+                                            Text("3. Run: adb shell dpm set-device-owner com.aistudio.socialjail.hxrk/com.example.service.JailDeviceAdminReceiver", color = DisciplineGreen, style = MaterialTheme.typography.bodySmall)
+                                            Text("4. Re-add your accounts.", color = TextWhite, style = MaterialTheme.typography.bodySmall)
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text("Once active, the uninstallation button will be completely disabled at the OS level during a lockdown session.", color = SteelLight, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = { showDOInstructions = false }) {
+                                            Text("Understood", color = SkyBlue)
+                                        }
+                                    },
+                                    containerColor = Color(0xFF131726)
+                                )
                             }
                         }
                     }
