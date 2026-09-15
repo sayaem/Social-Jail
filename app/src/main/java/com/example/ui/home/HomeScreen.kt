@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.LockSession
+import com.example.ui.common.AppLogoBadge
 import com.example.ui.theme.DisciplineGreen
 import com.example.ui.theme.JailBlack
 import com.example.ui.theme.JailCardBorder
@@ -303,18 +304,29 @@ fun HomeScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                activeSession.blockedAppNames.forEach { appName ->
+                                activeSession.blockedAppNames.forEachIndexed { index, appName ->
+                                    val pkg = activeSession.blockedPackageNames.getOrNull(index) ?: ""
                                     Surface(
                                         color = Color(0xFF261010),
                                         shape = RoundedCornerShape(8.dp),
                                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF5A1E1E))
                                     ) {
-                                        Text(
-                                            text = appName,
-                                            color = TextWhite,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            AppLogoBadge(
+                                                packageName = pkg,
+                                                appName = appName,
+                                                size = 18.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = appName,
+                                                color = TextWhite,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
                                     }
                                 }
                             }

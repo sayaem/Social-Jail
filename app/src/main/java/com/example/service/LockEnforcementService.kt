@@ -61,6 +61,7 @@ class LockEnforcementService : Service() {
         monitorJob?.cancel()
         monitorJob = serviceScope.launch {
             val db = AppDatabase.getInstance(applicationContext)
+            var tickCount = 0
 
             while (isActive) {
                 try {
@@ -95,19 +96,22 @@ class LockEnforcementService : Service() {
                         session
                     )
 
-                    // Update notification with remaining time
-                    val remainingText = "${TimeUtils.formatRemainingShort(remaining)} remaining"
-                    val notification = buildActiveNotification(remainingText)
-                    notificationManager.notify(NOTIFICATION_ID, notification)
+                    // Update notification once per second (every 3 ticks of 300ms)
+                    if (tickCount % 3 == 0) {
+                        val remainingText = "${TimeUtils.formatRemainingShort(remaining)} remaining"
+                        val notification = buildActiveNotification(remainingText)
+                        notificationManager.notify(NOTIFICATION_ID, notification)
+                    }
 
-                    // Secondary fallback usage stats check (in case accessibility was momentarily unavailable)
+                    // High-frequency secondary fallback usage stats check
                     checkUsageStatsForeground(session)
 
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
 
-                delay(1000L)
+                tickCount++
+                delay(300L)
             }
         }
     }
@@ -116,7 +120,7 @@ class LockEnforcementService : Service() {
         try {
             val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return
             val endTime = System.currentTimeMillis()
-            val beginTime = endTime - 3000L
+            val beginTime = endTime - 2000L
             val usageEvents = usageStatsManager.queryEvents(beginTime, endTime)
             val event = UsageEvents.Event()
 
@@ -132,8 +136,21 @@ class LockEnforcementService : Service() {
                 latestPackage != packageName &&
                 session.blockedPackageNames.contains(latestPackage)
             ) {
+                // Immediately kick out of blocked app to Home
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(homeIntent)
+
+                // Launch blocking UI
                 val blockingIntent = Intent(applicationContext, BlockingActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    )
                     putExtra(BlockingActivity.EXTRA_PACKAGE_NAME, latestPackage)
                     putExtra(BlockingActivity.EXTRA_END_TIME, session.endTime)
                 }
@@ -142,6 +159,13 @@ class LockEnforcementService : Service() {
         } catch (e: Exception) {
             // Usage stats might not have permission, gracefully ignore
         }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        // If app was swiped away from Recents, re-arm the enforcement service immediately
+        val restartIntent = Intent(applicationContext, LockEnforcementService::class.java)
+        ContextCompat.startForegroundService(applicationContext, restartIntent)
     }
 
     private fun createNotificationChannel() {

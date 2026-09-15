@@ -27,6 +27,11 @@ import com.example.ui.history.HistoryScreen
 import com.example.ui.home.HomeScreen
 import com.example.ui.navigation.Screen
 import com.example.ui.permissions.PermissionsScreen
+import androidx.compose.animation.Crossfade
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.example.ui.splash.SplashScreen
 import com.example.ui.settings.SettingsScreen
 import com.example.ui.theme.JailBlack
 import com.example.ui.theme.MyApplicationTheme
@@ -54,7 +59,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                SocialJailApp(viewModel = viewModel)
+                var isSplashActive by rememberSaveable { mutableStateOf(true) }
+
+                Crossfade(
+                    targetState = isSplashActive,
+                    label = "splash_crossfade"
+                ) { showSplash ->
+                    if (showSplash) {
+                        SplashScreen(
+                            onSplashFinished = { isSplashActive = false }
+                        )
+                    } else {
+                        SocialJailApp(viewModel = viewModel)
+                    }
+                }
             }
         }
     }

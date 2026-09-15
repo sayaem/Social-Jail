@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import com.example.domain.model.AppCategory
 import com.example.domain.model.InstalledAppInfo
 import com.example.domain.model.LockMode
+import com.example.ui.common.AppLogoBadge
 import com.example.ui.theme.DisciplineAmber
 import com.example.ui.theme.DisciplineGreen
 import com.example.ui.theme.JailBlack
@@ -384,7 +385,14 @@ fun CreateLockScreen(
                                                     checkmarkColor = TextWhite
                                                 )
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            AppLogoBadge(
+                                                packageName = app.packageName,
+                                                appName = app.appName,
+                                                iconDrawable = app.icon,
+                                                size = 40.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(
                                                     text = app.appName,
@@ -797,12 +805,23 @@ fun CreateLockScreen(
                                                 shape = RoundedCornerShape(6.dp),
                                                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF5A1E1E))
                                             ) {
-                                                Text(
-                                                    text = app.appName,
-                                                    color = TextWhite,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                                )
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    AppLogoBadge(
+                                                        packageName = app.packageName,
+                                                        appName = app.appName,
+                                                        iconDrawable = app.icon,
+                                                        size = 18.dp
+                                                    )
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(
+                                                        text = app.appName,
+                                                        color = TextWhite,
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                }
                                             }
                                         }
                                     }

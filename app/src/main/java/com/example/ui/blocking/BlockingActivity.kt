@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.common.AppLogoBadge
 import com.example.ui.theme.JailBlack
 import com.example.ui.theme.JailCardBorder
 import com.example.ui.theme.JailDarkSurface
@@ -94,6 +95,12 @@ class BlockingActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // If user tries to leave or recents-switch to the blocked app, immediately kick to Home
+        goToHomeScreen()
     }
 
     private fun goToHomeScreen() {
@@ -151,21 +158,34 @@ fun BlockingScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth()
         ) {
-            // High-impact lock badge
+            // High-impact App Logo & Lock Badge
             Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF260D0D))
-                    .border(2.dp, LockCrimson, CircleShape),
+                modifier = Modifier.size(92.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "App Locked",
-                    tint = LockCrimsonBright,
-                    modifier = Modifier.size(48.dp)
+                AppLogoBadge(
+                    packageName = packageName,
+                    appName = appName,
+                    size = 80.dp
                 )
+
+                // Superimposed lock seal
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .align(Alignment.BottomEnd)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1E0505))
+                        .border(1.5.dp, LockCrimson, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Locked",
+                        tint = LockCrimsonBright,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(28.dp))

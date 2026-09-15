@@ -43,7 +43,7 @@ class AppBlockingAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (event == null) return
         val packageName = event.packageName?.toString() ?: return
 
         // Skip our own application package
@@ -51,23 +51,27 @@ class AppBlockingAccessibilityService : AccessibilityService() {
 
         if (activeBlockedPackages.contains(packageName)) {
             val now = SystemClock.uptimeMillis()
-            // 600ms debounce per package to prevent intent loops
-            if (packageName == lastBlockedPackage && (now - lastBlockedLaunchTime) < 600L) {
-                return
-            }
-            lastBlockedPackage = packageName
-            lastBlockedLaunchTime = now
 
-            // Immediately kick back to Home screen
+            // Unconditionally force back to Home screen immediately to collapse the blocked window
             performGlobalAction(GLOBAL_ACTION_HOME)
 
-            // Launch blocking UI
-            val intent = Intent(applicationContext, BlockingActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                putExtra(BlockingActivity.EXTRA_PACKAGE_NAME, packageName)
-                putExtra(BlockingActivity.EXTRA_END_TIME, currentActiveSession?.endTime ?: 0L)
+            // Bring up BlockingActivity overlay
+            if (packageName != lastBlockedPackage || (now - lastBlockedLaunchTime) > 150L) {
+                lastBlockedPackage = packageName
+                lastBlockedLaunchTime = now
+
+                val intent = Intent(applicationContext, BlockingActivity::class.java).apply {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    )
+                    putExtra(BlockingActivity.EXTRA_PACKAGE_NAME, packageName)
+                    putExtra(BlockingActivity.EXTRA_END_TIME, currentActiveSession?.endTime ?: 0L)
+                }
+                startActivity(intent)
             }
-            startActivity(intent)
         }
     }
 
